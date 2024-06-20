@@ -10,7 +10,7 @@ Shader "Unity Shaders Book/Chapter 6/Specular Pixel-Level" {
 	}
 	SubShader {
 		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+			Tags { "LightMode"="UniversalForward" }
 		
 			CGPROGRAM
 			

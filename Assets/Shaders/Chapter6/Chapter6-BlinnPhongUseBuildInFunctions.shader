@@ -9,7 +9,8 @@ Shader "Unity Shaders Book/Chapter 6/Blinn-Phong Use Built-in Functions" {
 	}
 	SubShader {
 		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+			// 设定标签，光照模式为 URP
+			Tags { "LightMode"="UniversalForward" }
 		
 			CGPROGRAM
 			

@@ -7,7 +7,7 @@ Shader "Unity Shaders Book/Chapter 6/Half Lambert" {
 	}
 	SubShader {
 		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+			Tags { "LightMode"="UniversalForward" }
 		
 			CGPROGRAM
 			
