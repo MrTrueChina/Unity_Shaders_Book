@@ -65,23 +65,18 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
                 // 准备一个输出结构
                 vertexToFragment outputData;
 
-				// 将顶点坐标从物体空间坐标转到齐次空间(homogenous space)坐标
-				// 齐次空间是一个几何的概念，如果几何基础不够很难解释也很难理解，可以简单的理解为和世界空间类似的对所有物体都统一标准的空间坐标系，但齐次空间的坐标和世界空间坐标不一定是相同的
-                // PS: 如果有探索精神的话可以试试不进行转换直接存入，效果会很有趣，可以帮助你理解世界空间、物体本地空间、齐次空间的差异和关系
+				// 坐标转换存入返回消息，这个是渲染管线的要求，用不到也要传
 				outputData.pos = TransformObjectToHClip(vertexData.position);
 
-                // 将顶点空间的法线转为世界空间的法线
+                // 法线转换到世界空间
 				half3 worldNormal = TransformObjectToWorldNormal(vertexData.normal);
+                // 坐标转换到世界空间
+                half3 worldPosition = TransformObjectToWorld(vertexData.position);
 
                 // 获取主光源
                 Light light = GetMainLight();
-
-                // 计算角度对亮度的影响
-                // 原理是向量的点积，点积是集合了角度和长度(标准来说叫“模”)的乘法，向量的朝向越近则数值越大，向量之间的角度到达 90 度就为零，更大则为负数
-                // 利用法线和光线的点积就正好可以让朝向光的面为正数而背光面是负数，再用限制一下范围为 0-1 就大功告成
-                // saturate: 类似于 Mathf.Clamp，限制为 0-1；dot：求点积；世界空间法线和光线朝向的模都是 1，所以点积不会超过 1，不需要再做处理
+                // 计算主光源产生的亮度
                 half brightness = saturate(dot(worldNormal, light.direction));
-
                 // 计算光源产生的颜色，但先不计算对应到物体上的颜色
                 half3 lightColor = light.color.rgb * brightness;
 
@@ -89,21 +84,28 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
                 int additionalLightCount = GetAdditionalLightsCount();
                 for (int i = 0; i < additionalLightCount; i++)
                 {
-                    Light lightData = GetAdditionalLight(i, worldNormal);
+                    // 获取附加光源
+                    Light lightData = GetAdditionalLight(i, worldPosition);
+                    // 计算亮度
                     half brightness = saturate(dot(worldNormal, lightData.direction));
+                    // 把光源颜色合并到现在已经计算的颜色里
                     lightColor += lightData.color.rgb * brightness;
                 }
 
+                // 计算物体漫反射和光颜色混合后的颜色
                 outputData.color = _Diffuse.rgb * lightColor;
-
 
                 return outputData;
             }
 
             // 片元着色器处理方法
 			half4 frag(vertexToFragment input) : SV_Target {
-                // int additionalLightCount = GetAdditionalLightsCount();
 
+                // // 用于测试有几个附加光源的代码，附加光源越多则物体越亮
+                // // 经过测试只要附加光源可能影响到物体，整个物体的片元着色器执行都会获取到这个附加光源，不管是哪个位置的像素、会不会被影响到
+                // // 顶点着色器也已经测试过，同样只要物体可能被影响则所有顶点都可以获取到这个光源
+                // // 多物体已经测试过，不同物体可以获取到的附加光源不同，即使他们使用了一样的材质球也会因为位置不同获取到不同的光源
+                // int additionalLightCount = GetAdditionalLightsCount();
 				// return half4(additionalLightCount * 0.2,additionalLightCount * 0.2,additionalLightCount * 0.2, 1.0);
 
                 // 片元着色器啥都不用干，把颜色输出就行，因为这个 shader 是不透明的，透明度就是 1
