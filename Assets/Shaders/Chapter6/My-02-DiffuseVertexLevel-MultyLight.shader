@@ -35,9 +35,9 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
             // 顶点着色器的输入结构
             struct vertexInput
             {
-                // 位置
+                // 位置，位置可能是世界空间的，用 float
                 float4 position: POSITION;
-                // 法线
+                // 法线，需要很高的精度，用 float
                 float3 normal: NORMAL;
             };
             // 顶点着色器向片元着色器传输的数据结构
