@@ -3,8 +3,6 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
     // 对外暴露的属性
     Properties
     {
-        // 对外属性的格式是这样的： _名字 ("外部显示的接口名字", 类型) = 值
-        // 其中名字一定要是下划线开头，否则可能发生编译问题
         // 漫反射颜色，就是物体可以反射的光的颜色，也是物体在白光下的颜色
         _Diffuse ("Diffuse", Color) = (1,1,1,1)
     }
@@ -18,7 +16,7 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
                 "RenderPipeline" = "UniversalPipeline"
                 // 渲染类型为不透明
                 "RenderType" = "Opaque"
-                // 光照模式为 URP正向渲染路径（翻译可能不准确，这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+                // 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
                 "LightMode" = "UniversalForward"
             }
     
@@ -37,13 +35,6 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel-MultyLight"
             // 顶点着色器的输入结构
             struct vertexInput
             {
-                // 这里面定义的属性格式是这样的：类型 属性名: 语义
-                // 语义是一个传统 C 系里没有的东西，你可以理解为语义是给变量声明时候的参数，决定了这个变量的一些功能和作用
-                // 举个例子 POSITION 语义的意思是这个变量要用于存储位置，作为输入变量时管线就会将顶点位置传给这个变量，我们就可以利用这个位置信息进行一些处理之后再回传给管线让管线继续走下去完成渲染
-                // 同样的 NORMAL 的语义就是指这个变量要用于存储法线，管线会将顶点的法线信息传给这个变量
-
-                // 基于这样的原理你一定也猜到了，语义是有一定规则的，而对于这个规则我只能说现用现查吧，Unity ShdaerLab 的变动还是挺频繁的
-
                 // 位置
                 float4 position: POSITION;
                 // 法线

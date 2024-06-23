@@ -18,7 +18,7 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
                 "RenderPipeline" = "UniversalPipeline"
                 // 渲染类型为不透明
                 "RenderType" = "Opaque"
-                // 光照模式为 URP正向渲染路径（翻译可能不准确，这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+                // 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
                 "LightMode" = "UniversalForward"
             }
     
@@ -45,7 +45,7 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
                 // 基于这样的原理你一定也猜到了，语义是有一定规则的，而对于这个规则我只能说现用现查吧，Unity ShdaerLab 的变动还是挺频繁的
 
                 // 位置
-                float4 position: POSITION;
+                float4 position: POSITION; // POSITION 语义是 Unity 提供的位置语义，适合作为顶点着色器的输入（因为这个输入是 Unity 发出来的）
                 // 法线
                 float3 normal: NORMAL;
             };
@@ -53,13 +53,14 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
             struct vertexToFragment
             {
                 // 位置是必须的，没有这个位置则片元着色器不知道要在哪里绘制，即使片元着色器代码里没用到也要带这个属性
-				float4 pos : SV_POSITION;
+				float4 pos : SV_POSITION; // SV_POsition 是 HLSL 提供的位置语义，适合作为顶点着色器的输出（因为这个输出会走到片元着色器去，是 HLSL 的内部逻辑）
                 // 因为这个着色器是不透明的，颜色只要传 RGB，half3 就够了
                 half3 color: COLOR;
             };
 
 
             // 顶点着色器处理方法
+            // 通常来说每个顶点会执行一次顶点着色器
             vertexToFragment vert(vertexInput vertexData)
             {
                 // 准备一个输出结构
@@ -91,6 +92,10 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
             }
 
             // 片元着色器处理方法
+            // 通常来说每个像素会执行一次片元着色器，因此除非一个物体很小或者很远，否则片元着色器的执行次数远大于顶点着色器
+            // 从计算量角度应该尽可能将计算放在顶点着色器里
+            // 但需要注意的是片元着色器的输入是顶点着色器使用插值计算的，这可能导致一些视觉纰漏，比如在亮暗分界线这种颜色变化明显的地方，可能会发生能够看出三角面的情况
+            // 如果在设计上可以接受这种小纰漏则建议把计算放到片元着色器里，记住图形学是一个“看起来对就是对”的学科，追求完全的完美是不值得的
 			half4 frag(vertexToFragment input) : SV_Target {
                 // 片元着色器啥都不用干，把颜色输出就行，因为这个 shader 是不透明的，透明度就是 1
 				return half4(input.color, 1.0);
