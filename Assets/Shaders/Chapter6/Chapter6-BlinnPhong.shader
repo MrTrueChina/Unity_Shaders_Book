@@ -60,15 +60,19 @@ Shader "Unity Shaders Book/Chapter 6/Blinn-Phong" {
 				// 计算漫反射，使用了 max 而不是 saturate，但这个没有道理，光线角度和法线都是归一的，saturate 比 max 简单而且理论上可能速度还要快一点
 				half3 diffuse = light.color.rgb * _Diffuse.rgb * max(0, dot(worldNormal, light.direction));
 				
-				// 下面是计算高光，这是一个经验模型，并不严格符合物理规律，但是够像了
-				// 视线角度
-				// half3 viewDir = TransformWorldToView(i.worldPos);
-				half3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
-				// Get the half direction in world space
-				half3 halfDir = normalize(light.direction + viewDir);
-				// Compute specular term
-				half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+
+				// 下面是 Blinn-Phong 模型计算高光的逻辑
+				// 这个模型是 Phong 模型的改版，他可以少计算一次反射，因此一般来说会比 Phong 模型快一些
+				// 这个模型比 Phong 模型更加经验模型，但是它的效果也很好
 				
+				// 视线角度
+				half3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
+				// 获取视线方向和光线方向的中间的那个方向
+				half3 halfDir = normalize(light.direction + viewDir);
+				// 计算高光
+				half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+
+
 				return half4(ambient + diffuse + specular, 1.0);
 			}
 			

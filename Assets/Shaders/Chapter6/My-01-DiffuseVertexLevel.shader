@@ -67,8 +67,9 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
                 vertexToFragment outputData;
 
 				// 将顶点坐标从物体空间坐标转到齐次空间(homogenous space)坐标
-				// 齐次空间是一个几何的概念，如果几何基础不够很难解释也很难理解，可以简单的理解为和世界空间类似的对所有物体都统一标准的空间坐标系，但齐次空间的坐标和世界空间坐标不一定是相同的
+				// 齐次空间是一个有点特殊的中间环节，在 Unity 编辑器中是看不到的，他是一个以摄像机视椎为标准的一种空间，主要作用在于提供视角裁剪（例如判断一个三角面是否部分在屏幕外，然后裁剪掉在外面那部分）
                 // PS: 如果有探索精神的话可以试试不进行转换直接存入，效果会很有趣，可以帮助你理解世界空间、物体本地空间、齐次空间的差异和关系
+                // PS: 如果你的探索精神更强一些的话也可以试试直接把齐次空间坐标输出为颜色，你就会理解 “齐次空间以摄像机视椎为标准” 到底是怎么一回事
 				outputData.pos = TransformObjectToHClip(vertexData.position);
 
                 // 获取主光源
@@ -96,7 +97,8 @@ Shader "Unity Shaders Book/Chapter 6/My-DiffuseVertexLevel"
             // 从计算量角度应该尽可能将计算放在顶点着色器里
             // 但需要注意的是片元着色器的输入是顶点着色器使用插值计算的，这可能导致一些视觉纰漏，比如在亮暗分界线这种颜色变化明显的地方，可能会发生能够看出三角面的情况
             // 如果在设计上可以接受这种小纰漏则建议把计算放到片元着色器里，记住图形学是一个“看起来对就是对”的学科，追求完全的完美是不值得的
-			half4 frag(vertexToFragment input) : SV_Target {
+			half4 frag(vertexToFragment input) : SV_Target // SV_Target 语义，基本等同于"COLOR"，但推荐是 SV_Target
+            {
                 // 片元着色器啥都不用干，把颜色输出就行，因为这个 shader 是不透明的，透明度就是 1
 				return half4(input.color, 1.0);
 			}
