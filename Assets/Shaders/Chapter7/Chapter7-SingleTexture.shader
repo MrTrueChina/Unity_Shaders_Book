@@ -4,25 +4,33 @@
 Shader "Unity Shaders Book/Chapter 7/Single Texture" {
 	Properties {
 		_Color ("Color Tint", Color) = (1, 1, 1, 1)
-		_MainTex ("Main Tex", 2D) = "white" {}
+		_MainTex ("Main Tex", 2D) = "white" {} // white 是 Unity 内置的一个很小的纯白图的名字，表示如果没设置的话就用那张纯白图
 		_Specular ("Specular", Color) = (1, 1, 1, 1)
 		_Gloss ("Gloss", Range(8.0, 256)) = 20
 	}
 	SubShader {		
 		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+            Tags
+            {
+                // 使用通用渲染管线（URP）
+                "RenderPipeline" = "UniversalPipeline"
+                // 渲染类型为不透明
+                "RenderType" = "Opaque"
+                // 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+                "LightMode" = "UniversalForward"
+            }
 		
-			CGPROGRAM
+			HLSLPROGRAM
 			
 			#pragma vertex vert
 			#pragma fragment frag
 
-			#include "Lighting.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			
-			fixed4 _Color;
+			half4 _Color;
 			sampler2D _MainTex;
-			float4 _MainTex_ST;
-			fixed4 _Specular;
+			float4 _MainTex_ST; // 对于一个贴图需要有一个 名字_ST 的属性配套，这个属性就是贴图的缩放和偏移的那四个参数
+			half4 _Specular;
 			float _Gloss;
 			
 			struct a2v {
@@ -40,39 +48,43 @@ Shader "Unity Shaders Book/Chapter 7/Single Texture" {
 			
 			v2f vert(a2v v) {
 				v2f o;
-				o.pos = UnityObjectToClipPos(v.vertex);
 				
-				o.worldNormal = UnityObjectToWorldNormal(v.normal);
+				// 将顶点位置从对象空间转换到齐次空间
+				o.pos = TransformObjectToHClip(v.vertex);
 				
-				o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+				o.worldNormal = TransformObjectToWorldNormal(v.normal);
 				
-				o.uv = v.texcoord.xy * _MainTex_ST.xy + _MainTex_ST.zw;
-				// Or just call the built-in function
-//				o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+				o.worldPos = TransformObjectToWorld(v.vertex);
+				
+				// 转换 UV
+				o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
 				
 				return o;
 			}
 			
-			fixed4 frag(v2f i) : SV_Target {
-				fixed3 worldNormal = normalize(i.worldNormal);
-				fixed3 worldLightDir = normalize(UnityWorldSpaceLightDir(i.worldPos));
+			half4 frag(v2f i) : SV_Target {
+				// 获取主光源
+				Light light = GetMainLight();
 				
-				// Use the texture to sample the diffuse color
-				fixed3 albedo = tex2D(_MainTex, i.uv).rgb * _Color.rgb;
+				// 计算漫反射贴图颜色，就是贴图颜色乘以漫反射颜色
+				half3 albedo = tex2D(_MainTex, i.uv).rgb * _Color.rgb;
 				
-				fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz * albedo;
+				// 环境光
+				half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz * albedo;
 				
-				fixed3 diffuse = _LightColor0.rgb * albedo * max(0, dot(worldNormal, worldLightDir));
+				// 漫反射，用到了刚刚计算的贴图颜色
+				half3 diffuse = light.color.rgb * albedo * max(0, dot(i.worldNormal, light.direction));
 				
-				fixed3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
-				fixed3 halfDir = normalize(worldLightDir + viewDir);
-				fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+				// 高光
+				half3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
+				half3 halfDir = normalize(light.direction + viewDir);
+				half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(i.worldNormal, halfDir)), _Gloss);
 				
-				return fixed4(ambient + diffuse + specular, 1.0);
+				return half4(ambient + diffuse + specular, 1.0);
 			}
 			
-			ENDCG
+			ENDHLSL
 		}
-	} 
+	}
 	FallBack "Specular"
 }
