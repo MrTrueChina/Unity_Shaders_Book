@@ -1,38 +1,47 @@
 // Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
 Shader "Unity Shaders Book/Chapter 7/Normal Map In Tangent Space" {
-	Properties {
-		_Color ("Color Tint", Color) = (1, 1, 1, 1)
-		_MainTex ("Main Tex", 2D) = "white" {}
-		_BumpMap ("Normal Map", 2D) = "bump" {}
-		_BumpScale ("Bump Scale", Float) = 1.0
-		_Specular ("Specular", Color) = (1, 1, 1, 1)
-		_Gloss ("Gloss", Range(8.0, 256)) = 20
-	}
+    Properties
+    {
+        _Color ("Color Tint", Color) = (1, 1, 1, 1)
+        _MainTex ("Main Tex", 2D) = "white" { }
+        _BumpMap ("Normal Map", 2D) = "bump" { }
+        _BumpScale ("Bump Scale", Float) = 1.0
+        _Specular ("Specular", Color) = (1, 1, 1, 1)
+        _Gloss ("Gloss", Range(8.0, 256)) = 20
+    }
 	SubShader {
 		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+            Tags
+            {
+                // 使用通用渲染管线（URP）
+                "RenderPipeline" = "UniversalPipeline"
+                // 渲染类型为不透明
+                "RenderType" = "Opaque"
+                // 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+                "LightMode" = "UniversalForward"
+            }
 		
-			CGPROGRAM
+			HLSLPROGRAM
 			
 			#pragma vertex vert
 			#pragma fragment frag
 			
-			#include "Lighting.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			
-			fixed4 _Color;
+			half4 _Color;
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			sampler2D _BumpMap;
 			float4 _BumpMap_ST;
 			float _BumpScale;
-			fixed4 _Specular;
+			half4 _Specular;
 			float _Gloss;
 			
 			struct a2v {
 				float4 vertex : POSITION;
 				float3 normal : NORMAL;
-				float4 tangent : TANGENT;
+				float4 tangent : TANGENT; // TANGENT 语义，获取切线
 				float4 texcoord : TEXCOORD0;
 			};
 			
@@ -41,120 +50,63 @@ Shader "Unity Shaders Book/Chapter 7/Normal Map In Tangent Space" {
 				float4 uv : TEXCOORD0;
 				float3 lightDir: TEXCOORD1;
 				float3 viewDir : TEXCOORD2;
-			};
 
-			// Unity doesn't support the 'inverse' function in native shader
-			// so we write one by our own
-			// Note: this function is just a demonstration, not too confident on the math or the speed
-			// Reference: http://answers.unity3d.com/questions/218333/shader-inversefloat4x4-function.html
-			float4x4 inverse(float4x4 input) {
-				#define minor(a,b,c) determinant(float3x3(input.a, input.b, input.c))
-				
-				float4x4 cofactors = float4x4(
-				     minor(_22_23_24, _32_33_34, _42_43_44), 
-				    -minor(_21_23_24, _31_33_34, _41_43_44),
-				     minor(_21_22_24, _31_32_34, _41_42_44),
-				    -minor(_21_22_23, _31_32_33, _41_42_43),
-				    
-				    -minor(_12_13_14, _32_33_34, _42_43_44),
-				     minor(_11_13_14, _31_33_34, _41_43_44),
-				    -minor(_11_12_14, _31_32_34, _41_42_44),
-				     minor(_11_12_13, _31_32_33, _41_42_43),
-				    
-				     minor(_12_13_14, _22_23_24, _42_43_44),
-				    -minor(_11_13_14, _21_23_24, _41_43_44),
-				     minor(_11_12_14, _21_22_24, _41_42_44),
-				    -minor(_11_12_13, _21_22_23, _41_42_43),
-				    
-				    -minor(_12_13_14, _22_23_24, _32_33_34),
-				     minor(_11_13_14, _21_23_24, _31_33_34),
-				    -minor(_11_12_14, _21_22_24, _31_32_34),
-				     minor(_11_12_13, _21_22_23, _31_32_33)
-				);
-				#undef minor
-				return transpose(cofactors) / determinant(input);
-			}
+            };
 
-			v2f vert(a2v v) {
-				v2f o;
-				o.pos = UnityObjectToClipPos(v.vertex);
-				
-				o.uv.xy = v.texcoord.xy * _MainTex_ST.xy + _MainTex_ST.zw;
-				o.uv.zw = v.texcoord.xy * _BumpMap_ST.xy + _BumpMap_ST.zw;
+            v2f vert(a2v v)
+            {
+                v2f o;
+                o.pos = TransformObjectToHClip(v.vertex);
+                
+				// 用内置方法处理一下 UV 变化，点进去就能看到效果很简单
+				// 不过里面的名字有拼接，命名要求每个图片必须有一个 _ST 配对的价值就出现了
+                o.uv.xy = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv.zw = TRANSFORM_TEX(v.texcoord, _BumpMap);
+				// PS: 这里可以尝试将 _BumpMap 换成 _MainTex，这样纹理图的 ST 就能同时控制两个图，可以提升代码理解
+				// 但是我个人不太推荐这种方式，因为从设计上说一个模型的贴图应该在交付开发人员时就正确适配了，模型基础信息的调整应该尽可能放在美术层面，这样修改时只要美术修改即可不需要多方配合
+				// 当然在 Shader 这种技美内容里聊美术和开发的职责划分确实有点怪，但是美术、技美、开发还是要各自尽可能独立解决根源在自己的工作，合作的前提是互不干扰而不是一个人动全组都改
 
-				///
-				/// Note that the code below can handle both uniform and non-uniform scales
-				///
+                // 创建了一个从世界空间到切线空间的转换矩阵
+                half3 worldNormal = TransformObjectToWorldNormal(v.normal);
+                half3 worldTangent = TransformObjectToWorldDir(v.tangent.xyz);
+				// 这个就是纯内置的逻辑，需要一些几何功底才能理解，你要是功底不够就别管细节直接用，没有人什么都懂
+                float3x3 worldToTangent = CreateTangentToWorld(worldNormal, worldTangent, v.tangent.w);
 
-				// Construct a matrix that transforms a point/vector from tangent space to world space
-				fixed3 worldNormal = UnityObjectToWorldNormal(v.normal);  
-				fixed3 worldTangent = UnityObjectToWorldDir(v.tangent.xyz);  
-				fixed3 worldBinormal = cross(worldNormal, worldTangent) * v.tangent.w; 
+				// 获取主光源
+				Light light = GetMainLight();
 
-				/*
-				float4x4 tangentToWorld = float4x4(worldTangent.x, worldBinormal.x, worldNormal.x, 0.0,
-												   worldTangent.y, worldBinormal.y, worldNormal.y, 0.0,
-												   worldTangent.z, worldBinormal.z, worldNormal.z, 0.0,
-												   0.0, 0.0, 0.0, 1.0);
-				// The matrix that transforms from world space to tangent space is inverse of tangentToWorld
-				float3x3 worldToTangent = inverse(tangentToWorld);
-				*/
-				
-				//wToT = the inverse of tToW = the transpose of tToW as long as tToW is an orthogonal matrix.
-				float3x3 worldToTangent = float3x3(worldTangent, worldBinormal, worldNormal);
+				// 将视线和光线都转到切线空间去
+				o.lightDir = TransformWorldToTangent(light.direction, worldToTangent);
+				// 经典套娃，从世界空间转到切线空间(获取世界空间里看向某个位置的方向(把物体空间转到世界空间(顶点自己的坐标)))
+				o.viewDir = TransformWorldToTangent(GetWorldSpaceViewDir(TransformObjectToWorld(v.vertex.xyz)), worldToTangent);
 
-				// Transform the light and view dir from world space to tangent space
-				o.lightDir = mul(worldToTangent, WorldSpaceLightDir(v.vertex));
-				o.viewDir = mul(worldToTangent, WorldSpaceViewDir(v.vertex));
-
-				///
-				/// Note that the code below can only handle uniform scales, not including non-uniform scales
-				/// 
-
-				// Compute the binormal
-//				float3 binormal = cross( normalize(v.normal), normalize(v.tangent.xyz) ) * v.tangent.w;
-//				// Construct a matrix which transform vectors from object space to tangent space
-//				float3x3 rotation = float3x3(v.tangent.xyz, binormal, v.normal);
-				// Or just use the built-in macro
-//				TANGENT_SPACE_ROTATION;
-//				
-//				// Transform the light direction from object space to tangent space
-//				o.lightDir = mul(rotation, normalize(ObjSpaceLightDir(v.vertex))).xyz;
-//				// Transform the view direction from object space to tangent space
-//				o.viewDir = mul(rotation, normalize(ObjSpaceViewDir(v.vertex))).xyz;
-				
 				return o;
 			}
 			
-			fixed4 frag(v2f i) : SV_Target {				
-				fixed3 tangentLightDir = normalize(i.lightDir);
-				fixed3 tangentViewDir = normalize(i.viewDir);
+			half4 frag(v2f i) : SV_Target {
+
+				// 获取主光源
+				Light light = GetMainLight();
 				
 				// Get the texel in the normal map
-				fixed4 packedNormal = tex2D(_BumpMap, i.uv.zw);
-				fixed3 tangentNormal;
-				// If the texture is not marked as "Normal map"
-//				tangentNormal.xy = (packedNormal.xy * 2 - 1) * _BumpScale;
-//				tangentNormal.z = sqrt(1.0 - saturate(dot(tangentNormal.xy, tangentNormal.xy)));
-				
-				// Or mark the texture as "Normal map", and use the built-in funciton
-				tangentNormal = UnpackNormal(packedNormal);
+				half4 packedNormal = tex2D(_BumpMap, i.uv.zw);
+				half3 tangentNormal = UnpackNormal(packedNormal);
 				tangentNormal.xy *= _BumpScale;
 				tangentNormal.z = sqrt(1.0 - saturate(dot(tangentNormal.xy, tangentNormal.xy)));
 				
-				fixed3 albedo = tex2D(_MainTex, i.uv).rgb * _Color.rgb;
+				half3 albedo = tex2D(_MainTex, i.uv).rgb * _Color.rgb;
 				
-				fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz * albedo;
+				half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz * albedo;
 				
-				fixed3 diffuse = _LightColor0.rgb * albedo * max(0, dot(tangentNormal, tangentLightDir));
+				half3 diffuse = light.color.rgb * albedo * max(0, dot(tangentNormal, i.lightDir));
 
-				fixed3 halfDir = normalize(tangentLightDir + tangentViewDir);
-				fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(tangentNormal, halfDir)), _Gloss);
+				half3 halfDir = normalize(i.lightDir + i.viewDir);
+				half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(tangentNormal, halfDir)), _Gloss);
 				
-				return fixed4(ambient + diffuse + specular, 1.0);
+				return half4(ambient + diffuse + specular, 1.0);
 			}
 			
-			ENDCG
+			ENDHLSL
 		}
 	} 
 	FallBack "Specular"
