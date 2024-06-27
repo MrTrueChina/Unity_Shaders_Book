@@ -49,7 +49,7 @@ Shader "Unity Shaders Book/Chapter 7/My-SingleTexture-PrintTexcoord"
                 float4 position: POSITION; // POSITION 语义是 Unity 提供的位置语义，适合作为顶点着色器的输入（因为这个输入是 Unity 发出来的）
                 // 法线
                 float3 normal: NORMAL;
-                // 贴图
+                // UV 信息，UV 是存储在顶点上的
 				float4 texcoord: TEXCOORD0; // TEXCOORD 是 Texture Coodinates 的组合词
             };
             // 顶点着色器向片元着色器传输的数据结构
