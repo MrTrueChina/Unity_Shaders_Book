@@ -8,21 +8,32 @@ Shader "Unity Shaders Book/Chapter 7/Ramp Texture" {
 		_Specular ("Specular", Color) = (1, 1, 1, 1)
 		_Gloss ("Gloss", Range(8.0, 256)) = 20
 	}
-	SubShader {
-		Pass { 
-			Tags { "LightMode"="ForwardBase" }
+    SubShader
+    {
+        Pass
+        {
+            Tags
+            {
+                // 使用通用渲染管线（URP）
+                "RenderPipeline" = "UniversalPipeline"
+                // 渲染类型为不透明
+                "RenderType" = "Opaque"
+                // 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+                "LightMode" = "UniversalForward"
+            }
 		
-			CGPROGRAM
+			HLSLPROGRAM
 			
 			#pragma vertex vert
 			#pragma fragment frag
 
-			#include "Lighting.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Common/ShaderUtils.hlsl"
 			
-			fixed4 _Color;
+			half4 _Color;
 			sampler2D _RampTex;
 			float4 _RampTex_ST;
-			fixed4 _Specular;
+			half4 _Specular;
 			float _Gloss;
 			
 			struct a2v {
@@ -38,39 +49,43 @@ Shader "Unity Shaders Book/Chapter 7/Ramp Texture" {
 				float2 uv : TEXCOORD2;
 			};
 			
-			v2f vert(a2v v) {
-				v2f o;
-				o.pos = UnityObjectToClipPos(v.vertex);
-				
-				o.worldNormal = UnityObjectToWorldNormal(v.normal);
-				
-				o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-				
-				o.uv = TRANSFORM_TEX(v.texcoord, _RampTex);
-				
-				return o;
-			}
+            v2f vert(a2v v)
+            {
+                v2f o;
+
+                o.pos = TransformObjectToHClip(v.vertex);
+                
+                o.worldNormal = TransformObjectToWorldNormal(v.normal);
+                
+                o.worldPos = TransformObjectToWorld(v.vertex);
+                
+                o.uv = TRANSFORM_TEX(v.texcoord, _RampTex);
+                
+                return o;
+            }
+            
+            half4 frag(v2f i) : SV_Target
+            {
+                // 获取主光源
+                Light light = GetMainLight();
+
+                // 环境光
+                half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+                
+                // Use the texture to sample the diffuse color
+                half halfLambert = 0.5 * dot(i.worldNormal, light.direction) + 0.5;
+                half3 diffuseColor = tex2D(_RampTex, half2(halfLambert, halfLambert)).rgb * _Color.rgb;
+                
+                half3 diffuse = light.color.rgb * diffuseColor;
+                
+                half3 viewDir = normalize(GetWorldSpaceViewDir(i.worldPos));
+                half3 halfDir = normalize(light.direction + viewDir);
+                half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(i.worldNormal, halfDir)), _Gloss);
+                
+                return half4(ambient + diffuse + specular, 1.0);
+            }
 			
-			fixed4 frag(v2f i) : SV_Target {
-				fixed3 worldNormal = normalize(i.worldNormal);
-				fixed3 worldLightDir = normalize(UnityWorldSpaceLightDir(i.worldPos));
-				
-				fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
-				
-				// Use the texture to sample the diffuse color
-				fixed halfLambert  = 0.5 * dot(worldNormal, worldLightDir) + 0.5;
-				fixed3 diffuseColor = tex2D(_RampTex, fixed2(halfLambert, halfLambert)).rgb * _Color.rgb;
-				
-				fixed3 diffuse = _LightColor0.rgb * diffuseColor;
-				
-				fixed3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
-				fixed3 halfDir = normalize(worldLightDir + viewDir);
-				fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
-				
-				return fixed4(ambient + diffuse + specular, 1.0);
-			}
-			
-			ENDCG
+			ENDHLSL
 		}
 	} 
 	FallBack "Specular"
