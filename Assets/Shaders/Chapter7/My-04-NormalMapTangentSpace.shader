@@ -38,6 +38,7 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
             #pragma fragment frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Common/ShaderUtils.hlsl"
 
             // 在子着色器内部定义一遍对外暴露的属性，名字需要和属性名完全一样，类型要能够转换过来
             sampler2D _MainTexture;
@@ -89,11 +90,8 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
                 outputData.uv.xy = TRANSFORM_TEX(vertexData.texcoord, _MainTexture);
                 outputData.uv.zw = TRANSFORM_TEX(vertexData.texcoord, _Normal);
                 
-                // 创建了一个从世界空间到切线空间的转换矩阵
-                // 整个逻辑是固定的，需要一些几何功底才能理解，你要是功底不够就别管细节直接用，不影响
-                half3 worldNormal = TransformObjectToWorldNormal(vertexData.normal);
-                half3 worldTangent = TransformObjectToWorldDir(vertexData.tangent.xyz);
-                float3x3 worldToTangent = CreateTangentToWorld(worldNormal, worldTangent, vertexData.tangent.w);
+                // 创建一个从世界空间到切线空间的转换矩阵
+                float3x3 worldToTangent = CreateWorldToTangentByObject(vertexData.normal, vertexData.tangent);
 
                 // 获取主光源
                 Light mainLight = GetMainLight();
@@ -113,14 +111,7 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
                 half3 albedo = tex2D(_MainTexture, input.uv.xy).rgb * _Color.rgb;
 
                 // 计算法线
-                // 先取出并解包，法线是需要解包的，具体的 U3D 帮我们做了
-                half3 tangentNormal = UnpackNormal(tex2D(_Normal, input.uv.zw));
-                // 调整法线强度，如果发现足够可靠可以不要这一步，省一些计算量
-                tangentNormal.xy *= _NormalScale;
-                // 根据 xy 轴法线算出 z 轴，这个算法只能保证法线不小于 1，一旦 xy 轴调整强度后的绝对值超过了 1 就会有计算误差，所以非常不推荐在 U3D 环节调整法线强度
-                tangentNormal.z = sqrt(1.0 - saturate(dot(tangentNormal.xy, tangentNormal.xy)));
-                // 最后归一化一下，实际上属于一种找补，如果上面的计算强度没出问题的话则自然归一，如果强度出了问题的话……都出问题了还用这套法线图？让美术出一张没问题不用调的啊！
-                tangentNormal = normalize(tangentNormal);
+                half3 tangentNormal = UnpackTangentSpaceNormal(_Normal, input.uv.zw, _NormalScale);
 
                 // 获取主光源
                 Light light = GetMainLight();
@@ -129,11 +120,10 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
                 half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
 
                 // 漫反射光
-                half3 diffuse = light.color.rgb * max(0, dot(tangentNormal, input.tangentLightDirection));
+                half3 diffuse = GetDiffuseColor(light.color.rgb, tangentNormal, input.tangentLightDirection);
 
-                // 高光，Blinn-Phong 模型
-                half3 halfDir = normalize(input.tangentLightDirection + input.tangentViewDirection);
-                half3 specular = light.color.rgb * _SpecularColor.rgb * pow(max(0, dot(tangentNormal, halfDir)), _Gloss);
+                // 高光
+                half3 specular = GetSpecualrColorBlinnPhong(input.tangentLightDirection, tangentNormal, input.tangentViewDirection, _SpecularColor, light.color, _Gloss);
 
                 // 环境光和漫反射是受到物体颜色影响的，高光可以理解为像是涂层一样的东西就不受物体颜色影响了
                 return half4((diffuse + ambient) * albedo + specular, 1);
