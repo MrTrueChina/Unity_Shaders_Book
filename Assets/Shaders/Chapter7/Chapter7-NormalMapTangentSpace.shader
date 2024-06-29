@@ -81,7 +81,7 @@ Shader "Unity Shaders Book/Chapter 7/Normal Map In Tangent Space" {
                 // 将视线和光线都转到切线空间去
                 o.lightDir = TransformWorldToTangent(light.direction, worldToTangent);
                 // 经典套娃，从世界空间转到切线空间(获取世界空间里看向某个位置的方向(把物体空间转到世界空间(顶点自己的坐标)))
-                o.viewDir = TransformWorldToTangent(GetWorldSpaceViewDir(TransformObjectToWorld(v.vertex.xyz)), worldToTangent);
+                o.viewDir = TransformWorldToTangent(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(v.vertex.xyz)), worldToTangent);
 
                 return o;
             }

@@ -1,14 +1,25 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
+/// 计算漫反射亮度
+/// @param normal 法线
+/// @param lightDirection 光线方向
+/// @return 漫反射亮度
+half GetDiffuseBrightness(half3 normal, half3 lightDirection)
+{
+    // 简单的点积，当向量垂直后点积就从 0 逐渐变为负数，正好可以计算光照受到角度影响的效果
+    return max(0, dot(normal, lightDirection));
+}
+
 /// 计算漫反射颜色
 /// @param color 物体本身的漫反射颜色
 /// @param normal 法线
 /// @param lightDirection 光线方向
+/// @return 漫反射颜色
 half3 GetDiffuseColor(half3 color, half3 normal, half3 lightDirection)
 {
     // 简单的点积，当向量垂直后点积就从 0 逐渐变为负数，正好可以计算光照受到角度影响的效果
-    return color.rgb * max(0, dot(normal, lightDirection));
+    return color.rgb * GetDiffuseBrightness(normal, lightDirection);
 }
 
 /// 获取高光颜色，Blinn-Phong 模型

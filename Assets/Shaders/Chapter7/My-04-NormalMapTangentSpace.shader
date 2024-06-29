@@ -99,7 +99,7 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
                 // 转换光线到切线空间并保存
                 outputData.tangentLightDirection = TransformWorldToTangentDir(mainLight.direction, worldToTangent);
                 // 转换视线到切线空间并保存
-                outputData.tangentViewDirection = TransformWorldToTangentDir(GetWorldSpaceViewDir(TransformObjectToWorld(vertexData.position.xyz)), worldToTangent);
+                outputData.tangentViewDirection = TransformWorldToTangentDir(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(vertexData.position.xyz)), worldToTangent);
 
                 return outputData;
             }

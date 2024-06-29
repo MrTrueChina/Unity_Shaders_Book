@@ -72,15 +72,17 @@ Shader "Unity Shaders Book/Chapter 7/Ramp Texture" {
                 // 环境光
                 half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
                 
-                // Use the texture to sample the diffuse color
-                half halfLambert = 0.5 * dot(i.worldNormal, light.direction) + 0.5;
+                // 计算亮度，似乎是为了更好地显示自定义颜色渐变效果，总之使用了半算法
+                half halfLambert = GetDiffuseBrightness(i.worldNormal, light.direction) * 0.5 + 0.5;
+				// 漫反射计算的结果是 0-1，UV 的基础范围也是 0-1，直接用亮度来取颜色
+				// 后面还要乘一下设置的漫反射颜色
                 half3 diffuseColor = tex2D(_RampTex, half2(halfLambert, halfLambert)).rgb * _Color.rgb;
                 
+				// 计算漫反射
                 half3 diffuse = light.color.rgb * diffuseColor;
                 
-                half3 viewDir = normalize(GetWorldSpaceViewDir(i.worldPos));
-                half3 halfDir = normalize(light.direction + viewDir);
-                half3 specular = light.color.rgb * _Specular.rgb * pow(max(0, dot(i.worldNormal, halfDir)), _Gloss);
+				// 高光
+                half3 specular = GetSpecualrColorBlinnPhong(light.direction, i.worldNormal, GetWorldSpaceNormalizeViewDir(i.worldPos), _Specular.rgb, light.color, _Gloss);
                 
                 return half4(ambient + diffuse + specular, 1.0);
             }
