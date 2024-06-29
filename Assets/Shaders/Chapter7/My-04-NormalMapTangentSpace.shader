@@ -45,7 +45,7 @@ Shader "Unity Shaders Book/Chapter 7/My-NormalMapTangentSpace"
 			float4 _MainTexture_ST; // 对于一个贴图需要有一个 名字_ST 的属性配套，这个属性就是贴图的缩放和偏移的那四个参数
             half4 _Color;
             sampler2D _Normal;
-            half4 _Normal_ST;
+            float4 _Normal_ST;
             float _NormalScale;
             half4 _SpecularColor;
             float _Gloss;
