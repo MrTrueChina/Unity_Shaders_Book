@@ -16,12 +16,10 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Test"
 			"Queue" = "AlphaTest"
 			"IgnoreProjector" = "True"
 			"RenderType" = "TransparentCutout"
-
         }
         
         Pass
         {
-
 			Tags
 			{
 				// 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
