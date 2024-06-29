@@ -49,6 +49,17 @@ float3x3 CreateWorldToTangentByObject(half3 objectSpaceNormal, half4 objectSpace
     return CreateTangentToWorld(TransformObjectToWorldNormal(objectSpaceNormal), TransformObjectToWorldDir(objectSpaceTangent.xyz), objectSpaceTangent.w);
 }
 
+/// 使用物体空间的向量创建物体空间到切线空间的向量转换矩阵
+/// @param objectSpaceNormal 物体空间法线
+/// @param objectSpaceTangent 物体空间切线
+/// @return 物体空间到切线空间的转换矩阵
+float3x3 CreateObjectToTangent(half3 objectSpaceNormal, half4 objectSpaceTangent)
+{
+    // 具体的算法需要一些几何功底才能理解，你要是功底不够就别管细节直接用，不影响
+    float3 binormal = cross(normalize(objectSpaceNormal), normalize(objectSpaceTangent.xyz)) * objectSpaceTangent.w;
+    return float3x3(objectSpaceTangent.xyz, binormal, objectSpaceNormal);
+}
+
 /// 解包切线空间法线贴图并返回法线，能够进行不准确的法线强度调整【注意】如果可以获取到不需要调整的法线贴图请尽可能直接使用 UnpackNormal
 /// @param normalMap 法线贴图
 /// @param uv 贴图坐标
