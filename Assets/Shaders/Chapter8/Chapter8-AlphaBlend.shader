@@ -22,7 +22,9 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blend" {
 				"LightMode" = "UniversalForward"
 			}
 
+			// 关闭深度写入
 			ZWrite Off
+			// 混合模式为 当前片元使用自身透明度，已有内容使用 1-片元透明度。就是最普通的透明材质
 			Blend SrcAlpha OneMinusSrcAlpha
 			
 			HLSLPROGRAM
