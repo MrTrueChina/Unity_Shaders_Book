@@ -33,6 +33,13 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blending With ZWrite"
         {
             Name "ZWrite"
 
+			// Tags
+			// {
+			// 	// 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+			// 	// 不知道什么原因，但是如果在前面的 pass 添加的话这个 pass 会完全渲染不出内容，同样的原因也不能加到 subshader 里，只能在这里写
+			// 	"LightMode" = "DepthNormalsOnly"
+			// }
+
             ZWrite On
             ColorMask 0 // 不输出任何颜色，这里可以是 RGBA 的任意组合，0 表示任何一个通道都不输出
         }
