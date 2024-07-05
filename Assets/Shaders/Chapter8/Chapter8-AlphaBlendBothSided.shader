@@ -98,9 +98,10 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blend With Both Side"
 		{
             Tags
             {
-				// 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
+				// 光照模式为 USB-AfterTransparentPass
+				// 这个光照模式是给 《入门精要》 额外扩增的渲染通道，URP 不支持传统的通道，需要用 ScriptableRenderFeature 来添加
+				// 这个方式添加的通道和传统通道不一样，尤其是顺序上有所不同
 				"LightMode" = "USB-AfterTransparentPass"
-				// "LightMode" = "SRPDefaultUnlit"
 			}
 			
 			// Second pass renders only front faces 
@@ -148,9 +149,6 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blend With Both Side"
 
 				// 获取主光源
 				Light light = GetMainLight();
-
-				// return half4(1,1,1,1);
-				// return half4(light.color.rgb, 1.0);
 				
 				half3 worldNormal = normalize(i.worldNormal);
 				half3 worldLightDir = light.direction;

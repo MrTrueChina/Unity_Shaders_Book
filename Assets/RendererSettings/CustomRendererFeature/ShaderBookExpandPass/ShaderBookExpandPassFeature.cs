@@ -6,6 +6,9 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering.Universal.Internal;
 
+/// <summary>
+/// 给《入门精要》配对的自定义渲染通道功能，需要在使用的 URP-Renderer 上添加才能提供功能
+/// </summary>
 [DisallowMultipleRendererFeature("Unity Shader Book Expand Pass Feature")]
 public class ShaderBookExpandPassFeature : ScriptableRendererFeature
 {
