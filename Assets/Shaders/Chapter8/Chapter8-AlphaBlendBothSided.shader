@@ -99,7 +99,7 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blend With Both Side"
             Tags
             {
 				// 光照模式为 URP前向渲染路径（这个光照模式可以在 URP 允许范围内接收尽可能多的光源）
-				"LightMode" = "UniversalGBuffer"
+				"LightMode" = "USB-AfterTransparentPass"
 				// "LightMode" = "SRPDefaultUnlit"
 			}
 			
@@ -149,8 +149,8 @@ Shader "Unity Shaders Book/Chapter 8/Alpha Blend With Both Side"
 				// 获取主光源
 				Light light = GetMainLight();
 
-				return half4(1,1,1,1);
-				return half4(light.color.rgb, 1.0);
+				// return half4(1,1,1,1);
+				// return half4(light.color.rgb, 1.0);
 				
 				half3 worldNormal = normalize(i.worldNormal);
 				half3 worldLightDir = light.direction;
