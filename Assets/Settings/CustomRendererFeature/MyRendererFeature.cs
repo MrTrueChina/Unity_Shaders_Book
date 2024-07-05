@@ -47,7 +47,8 @@ public class MyRendererFeature : ScriptableRendererFeature
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
         // 根据摄像机类型注入，这里给游戏摄像机和场景视图注入，没有注入 VR 和其他的一些类型
-        if (renderingData.cameraData.cameraType == CameraType.Game || renderingData.cameraData.cameraType == CameraType.SceneView)
+        // 此外这里支持给预览界面注入，就是点击一个预制后在 inspector 界面下面会出现的那个预览窗口，但这个渲染功能计划上是后处理，可能干扰预览，不注入到预览界面摄像机
+        if (renderingData.cameraData.cameraType == CameraType.Game || renderingData.cameraData.isSceneViewCamera)
         {
             // 注入通道
             renderer.EnqueuePass(redTintRenderPass);

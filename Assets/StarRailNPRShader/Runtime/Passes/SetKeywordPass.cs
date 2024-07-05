@@ -24,11 +24,20 @@ using UnityEngine.Rendering.Universal;
 
 namespace HSR.NPRShader.Passes
 {
+    /// <summary>
+    /// 设置关键字的 Pass
+    /// </summary>
     public class SetKeywordPass : ScriptableRenderPass
     {
         private readonly string m_Keyword;
         private readonly bool m_State;
 
+        /// <summary>
+        /// 构造方法，不是什么内置的特殊方法，但是传入了一个渲染事件，因为这个 Pass 可能是复用的，不一定能直接从管线中获取到应该对应的渲染事件
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <param name="state"></param>
+        /// <param name="evt"></param>
         public SetKeywordPass(string keyword, bool state, RenderPassEvent evt)
         {
             renderPassEvent = evt;
@@ -39,8 +48,13 @@ namespace HSR.NPRShader.Passes
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            // 获取命令
             CommandBuffer cmd = CommandBufferPool.Get();
+
+            // 设置关键字是否启动
             CoreUtils.SetKeyword(cmd, m_Keyword, m_State);
+            
+            // 执行并释放命令，让渲染继续
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }

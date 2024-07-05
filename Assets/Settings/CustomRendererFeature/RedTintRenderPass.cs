@@ -84,18 +84,26 @@ public class RedTintRenderPass : ScriptableRenderPass
     public void Dispose()
     {
     #if UNITY_EDITOR
+        // 在编辑器里
         if (EditorApplication.isPlaying)
         {
+            // 在游戏中，用普通销毁
             Object.Destroy(material);
         }
         else
         {
+            // 没有在游戏中，用立即销毁
             Object.DestroyImmediate(material);
         }
     #else
-            Object.Destroy(material);
+        // 不是编辑器里，用普通销毁
+        Object.Destroy(material);
     #endif
 
-        if (textureHandle != null) textureHandle.Release();
+        // 释放中转图片
+        if (textureHandle != null)
+        {
+            textureHandle.Release();
+        }
     }
 }
