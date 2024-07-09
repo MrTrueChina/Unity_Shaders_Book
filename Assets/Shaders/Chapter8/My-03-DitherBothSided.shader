@@ -92,12 +92,8 @@ Shader "Unity Shaders Book/Chapter 8/My Dither Both Side"
                 // 将法线转为世界空间存入
                 outputData.worldNormal = TransformObjectToWorldNormal(vertexData.normal);
 
-                // 获取顶点位置信息
-                VertexPositionInputs positions = GetVertexPositionInputs(vertexData.position);
-                // 取出屏幕空间位置存入
-                outputData.screenPosition = (positions.positionVS.xy * 0.5 + 0.5) * _ScreenSize.xy;
-                
-                outputData.screenPosition = (outputData.hPosition.xy * 0.5 + 0.5) * _ScreenSize.xy;
+                // 将齐次空间坐标转为屏幕空间坐标并存入
+                outputData.screenPosition = ComputeScreenPos(outputData.hPosition);
         
                 // 转换 UV
                 outputData.uv = TRANSFORM_TEX(vertexData.texcoord, _MainTex);
@@ -111,7 +107,7 @@ Shader "Unity Shaders Book/Chapter 8/My Dither Both Side"
                 // 这个 shader 是半透明的，a 通道也参与计算
                 half4 albedo = tex2D(_MainTex, input.uv) * _Color;
 
-                return half4(input.screenPosition.xy,1,1);
+                // return half4(input.screenPosition.xy,1,1);
 
                 // 计算屏幕空间抖动产生的透明度
                 float ditherAlpha = UnityDitherFloat(albedo.a, input.screenPosition);

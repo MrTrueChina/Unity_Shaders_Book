@@ -76,22 +76,42 @@ half3 UnpackTangentSpaceNormal(sampler2D normalMap, float2 uv, float scale)
     return normalize(tangentNormal);
 }
 
+// /// Unity 生成的抖动方法，有一些修改
+// /// @param In 输入值
+// /// @param ScreenPosition 屏幕坐标
+// /// @return 抖动值
+// float UnityDitherFloat(float In, float2 ScreenPosition)
+// {
+//     // float2 uv = ScreenPosition.xy * _ScreenParams.xy;
+//     // float DITHER_THRESHOLDS[16] =
+//     // {
+//     //     1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+//     //     13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+//     //     4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+//     //     16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+//     // };
+//     // uint index = (uint(uv.x) % 2) * 2 + uint(uv.y) % 2;
+//     // return In - DITHER_THRESHOLDS[index];
+
+//     return In - ScreenPosition.x % (1 / _ScreenSize.x) * _ScreenSize.x;
+//     return In - ScreenPosition.x % 0.01 / 0.01;
+// }
+
 /// Unity 生成的抖动方法，有一些修改
 /// @param In 输入值
 /// @param ScreenPosition 屏幕坐标
 /// @return 抖动值
 float UnityDitherFloat(float In, float2 ScreenPosition)
 {
-    // float2 uv = ScreenPosition.xy * _ScreenParams.xy;
-    // float DITHER_THRESHOLDS[16] =
-    // {
-    //     1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
-    //     13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
-    //     4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
-    //     16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
-    // };
-    // uint index = (uint(uv.x) % 2) * 2 + uint(uv.y) % 2;
-    // return In - DITHER_THRESHOLDS[index];
-
-    return In - ScreenPosition.x % 1 / 1;
+    float2 uv = ScreenPosition.xy * _ScreenParams.xy;
+    float DITHER_THRESHOLDS[16] =
+    {
+        1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+        13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+        4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+        16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+    };
+    // uint index = (uint(uv.x) % 4) * 4 + uint(uv.y) % 4;
+    uint index = (uint(uv.x) % 4) * 4 + uint(uv.y) % 4;
+    return In - DITHER_THRESHOLDS[index];
 }
