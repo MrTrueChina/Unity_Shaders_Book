@@ -75,3 +75,23 @@ half3 UnpackTangentSpaceNormal(sampler2D normalMap, float2 uv, float scale)
     // 最后归一化一下，实际上属于一种找补，如果上面的计算强度没出问题的话则自然归一，如果强度出了问题的话……都出问题了还用这套法线图？让美术出一张没问题不用调的啊！
     return normalize(tangentNormal);
 }
+
+/// Unity 生成的抖动方法，有一些修改
+/// @param In 输入值
+/// @param ScreenPosition 屏幕坐标
+/// @return 抖动值
+float UnityDitherFloat(float In, float2 ScreenPosition)
+{
+    // float2 uv = ScreenPosition.xy * _ScreenParams.xy;
+    // float DITHER_THRESHOLDS[16] =
+    // {
+    //     1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+    //     13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+    //     4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+    //     16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+    // };
+    // uint index = (uint(uv.x) % 2) * 2 + uint(uv.y) % 2;
+    // return In - DITHER_THRESHOLDS[index];
+
+    return In - ScreenPosition.x % 1 / 1;
+}

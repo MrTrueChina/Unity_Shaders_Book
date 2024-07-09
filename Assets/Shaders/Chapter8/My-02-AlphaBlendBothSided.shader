@@ -58,6 +58,15 @@ Shader "Unity Shaders Book/Chapter 8/My Alpha Blend With Both Side"
 				// 这个光照模式是给 《入门精要》 额外扩增的渲染通道，URP 不支持传统的通道，需要用 ScriptableRenderFeature 来添加
 				// 这个方式添加的通道和传统通道不一样，尤其是顺序上有所不同
 				"LightMode" = "USB-AfterTransparentPass"
+                
+                // // 光照模式为 SRPDefaultUnlit (脚本自定义渲染通道的默认光照模式，根据名字分析这个通道没有光照信息)
+                // // 这是 URP 给自定义通道提供的光照模式，也是在不写光照模式时默认使用的光照模式
+				// "LightMode" = "SRPDefaultUnlit"
+                
+                // // 光照模式为 UniversalGBuffer (G缓冲)
+                // // G缓冲是计算机图形学的通用设计，是一个记录了光照、深度、法线等各种信息的缓冲区，常用于延迟渲染
+                // // 这个光照模式不会写入光照信息，但可以读取，这也是为什么他常用于延迟渲染，因为必须有其他光照模式进行正确的光照信息写入这个通道才能正常渲
+				// "LightMode" = "UniversalGBuffer"
             }
 
 			// 关闭深度写入
@@ -73,6 +82,12 @@ Shader "Unity Shaders Book/Chapter 8/My Alpha Blend With Both Side"
             // 指定顶点着色器方法和片元着色器方法
             #pragma vertex vert
             #pragma fragment frag
+            // #pragma fragment debug_frag
+
+            half4 debug_frag(vertexToFragment input) : SV_Target
+            {
+                return half4(1,1,1,1);
+            }
     
             ENDHLSL
         }
