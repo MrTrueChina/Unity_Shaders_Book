@@ -1,6 +1,84 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
+/// 获取附加光源产生的光照颜色，所有能够产生影响的附加光源都会计算在内
+/// @param worldSpacePosition 世界空间位置
+/// @param worldSpaceNormal 世界空间法线
+/// @return 光照颜色
+half3 GetAdditionalLighting(float3 worldSpacePosition, half3 worldSpaceNormal)
+{
+    #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+        // 附加光源为逐顶点模式，使用 URP 内置的方法处理
+        return VertexLighting(worldSpacePosition, worldSpaceNormal);
+    #elif defined(_ADDITIONAL_LIGHTS)
+        // 附加光源为逐像素模式
+
+        half3 additionalLighting = (0, 0, 0);
+
+        // 这里是一个普通的遍历，但是用了 LIGHT_LOOP_BEGIN 这个 define，就是 URP 提供的获取附加光源的循环的前半段代码
+        uint lightsCount = GetAdditionalLightsCount();
+        LIGHT_LOOP_BEGIN(lightsCount)
+        Light light = GetAdditionalLight(lightIndex, worldSpacePosition);
+        
+        #ifdef _LIGHT_LAYERS
+            // 如果启用了渲染层则添加一个渲染层的判断，括号不需要包含在 #if 里面，多一对括号不影响运行
+            uint meshRenderingLayers = GetMeshRenderingLayer();
+            if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        #endif
+        {
+            half3 lightColor = light.color * light.distanceAttenuation;
+            additionalLighting += LightingLambert(lightColor, light.direction, worldSpaceNormal);
+        }
+
+        // 这也是个 define，是 URP 提供的获取附加光源的循环的后半段代码
+        LIGHT_LOOP_END
+
+        return additionalLighting;
+    #else
+        // 附加光源被禁用了，直接返回纯黑
+        return (0, 0, 0);
+    #endif
+}
+
+/// 获取附加光源产生的高光颜色，所有能够产生影响的附加光源都会计算在内
+/// @param worldSpacePosition 世界空间位置
+/// @param worldSpaceNormal 世界空间法线
+/// @param specular 高光颜色
+/// @param gloss 高光集中程度
+/// @return 高光颜色
+half3 GetAdditionalSpecularColor(float3 worldSpacePosition, half3 worldSpaceNormal, half4 specular, float gloss)
+{
+    #if defined(_ADDITIONAL_LIGHTS_VERTEX) || defined(_ADDITIONAL_LIGHTS)
+        // 附加光源开启，进行逻辑处理
+
+        half3 additionalSpecular = (0, 0, 0);
+
+        // 这里是一个普通的遍历，但是用了 LIGHT_LOOP_BEGIN 这个 define，就是 URP 提供的获取附加光源的循环的前半段代码
+        uint lightsCount = GetAdditionalLightsCount();
+        LIGHT_LOOP_BEGIN(lightsCount)
+        Light light = GetAdditionalLight(lightIndex, worldSpacePosition);
+        
+        #ifdef _LIGHT_LAYERS
+            // 如果启用了渲染层则添加一个渲染层的判断，括号不需要包含在 #if 里面，多一对括号不影响运行
+            uint meshRenderingLayers = GetMeshRenderingLayer();
+            if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        #endif
+        {
+            half3 lightColor = light.color * light.distanceAttenuation;
+            additionalSpecular += LightingSpecular(lightColor, light.direction, worldSpaceNormal, GetWorldSpaceViewDir(worldSpacePosition), specular, gloss);
+        }
+
+        // 这也是个 define，是 URP 提供的获取附加光源的循环的后半段代码
+        LIGHT_LOOP_END
+
+        return additionalSpecular;
+    #else
+        // 附加光源被禁用了，直接返回纯黑
+        return (0, 0, 0);
+    #endif
+}
+
+/// 【弃用】这段代码有 bug，没有考虑光衰减问题
 /// 计算漫反射亮度
 /// @param normal 法线
 /// @param lightDirection 光线方向
@@ -76,27 +154,6 @@ half3 UnpackTangentSpaceNormal(sampler2D normalMap, float2 uv, float scale)
     return normalize(tangentNormal);
 }
 
-// /// Unity 生成的抖动方法，有一些修改
-// /// @param In 输入值
-// /// @param ScreenPosition 屏幕坐标
-// /// @return 抖动值
-// float UnityDitherFloat(float In, float2 ScreenPosition)
-// {
-//     // float2 uv = ScreenPosition.xy * _ScreenParams.xy;
-//     // float DITHER_THRESHOLDS[16] =
-//     // {
-//     //     1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
-//     //     13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
-//     //     4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
-//     //     16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
-//     // };
-//     // uint index = (uint(uv.x) % 2) * 2 + uint(uv.y) % 2;
-//     // return In - DITHER_THRESHOLDS[index];
-
-//     return In - ScreenPosition.x % (1 / _ScreenSize.x) * _ScreenSize.x;
-//     return In - ScreenPosition.x % 0.01 / 0.01;
-// }
-
 /// Unity 生成的抖动方法，有一些修改
 /// @param In 输入值
 /// @param ScreenPosition 屏幕坐标
@@ -111,7 +168,6 @@ float UnityDitherFloat(float In, float2 ScreenPosition)
         4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
         16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
     };
-    // uint index = (uint(uv.x) % 4) * 4 + uint(uv.y) % 4;
     uint index = (uint(uv.x) % 4) * 4 + uint(uv.y) % 4;
     return In - DITHER_THRESHOLDS[index];
 }
