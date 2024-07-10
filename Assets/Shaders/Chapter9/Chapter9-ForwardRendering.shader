@@ -22,6 +22,9 @@ Shader "Unity Shaders Book/Chapter 9/Forward Rendering"
 			"RenderType" = "Opaque"
         }
 		
+		// 这个 Shader 在原版基础上大改，几乎没有原版的内容了
+		// URP 是单通道的，原版的多通道逻辑无法使用
+
 		Pass
 		{
             Tags
