@@ -40,7 +40,7 @@ half3 GetAdditionalLighting(float3 worldSpacePosition, half3 worldSpaceNormal)
     #endif
 }
 
-/// 获取附加光源产生的高光颜色，所有能够产生影响的附加光源都会计算在内
+/// 获取附加光源产生的高光颜色，所有能够产生影响的附加光源都会计算在内，但是不包含附加光源产生的阴影
 /// @param worldSpacePosition 世界空间位置
 /// @param worldSpaceNormal 世界空间法线
 /// @param specular 高光颜色

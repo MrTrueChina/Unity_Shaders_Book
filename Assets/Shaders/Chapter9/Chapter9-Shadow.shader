@@ -2,154 +2,162 @@
 // Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
 // Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
-Shader "Unity Shaders Book/Chapter 9/Shadow" {
-	Properties {
-		_Diffuse ("Diffuse", Color) = (1, 1, 1, 1)
-		_Specular ("Specular", Color) = (1, 1, 1, 1)
-		_Gloss ("Gloss", Range(8.0, 256)) = 20
-	}
-	SubShader {
-		Tags { "RenderType"="Opaque" }
+Shader "Unity Shaders Book/Chapter 9/Shadow"
+{
+    Properties
+    {
+        _Diffuse ("Diffuse", Color) = (1, 1, 1, 1)
+        _Specular ("Specular", Color) = (1, 1, 1, 1)
+        _Gloss ("Gloss", Range(8.0, 256)) = 20
+    }
+    SubShader
+    {
+        Tags
+		{
+            // 使用通用渲染管线（URP）
+            "RenderPipeline" = "UniversalPipeline"
+            // 渲染队列为几何体
+			"Queue" = "Geometry"
+            // 渲染类型为不透明
+			"RenderType" = "Opaque"
+        }
 		
-		Pass {
-			// Pass for ambient light & first pixel light (directional light)
-			Tags { "LightMode"="ForwardBase" }
-		
-			CGPROGRAM
-			
-			// Apparently need to add this declaration 
-			#pragma multi_compile_fwdbase	
-			
-			#pragma vertex vert
-			#pragma fragment frag
-			
-			// Need these files to get built-in macros
-			#include "Lighting.cginc"
-			#include "AutoLight.cginc"
-			
-			fixed4 _Diffuse;
-			fixed4 _Specular;
-			float _Gloss;
-			
-			struct a2v {
-				float4 vertex : POSITION;
-				float3 normal : NORMAL;
-			};
-			
-			struct v2f {
-				float4 pos : SV_POSITION;
-				float3 worldNormal : TEXCOORD0;
-				float3 worldPos : TEXCOORD1;
-				SHADOW_COORDS(2)
-			};
-			
-			v2f vert(a2v v) {
-			 	v2f o;
-			 	o.pos = UnityObjectToClipPos(v.vertex);
-			 	
-			 	o.worldNormal = UnityObjectToWorldNormal(v.normal);
+		// 这个 Shader 在原版基础上大改，几乎没有原版的内容了
+		// URP 的阴影逻辑和 BiRP 的阴影接口大不相同，阴影代码参考的是官方手册
+		// https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@14.0/manual/use-built-in-shader-methods-shadows.html#example
 
-			 	o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-			 	
-			 	// Pass shadow coordinates to pixel shader
-			 	TRANSFER_SHADOW(o);
-			 	
-			 	return o;
-			}
-			
-			fixed4 frag(v2f i) : SV_Target {
-				fixed3 worldNormal = normalize(i.worldNormal);
-				fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
+		Pass
+		{
+            Tags
+            {
+                // 光照模式为 URP前向渲染路径（这个光照模式会产生光照贡献，即可以写入光照信息）
+                "LightMode" = "UniversalForward"
+            }
+            
+            HLSLPROGRAM
+            
+			// 编译主光源投影版本
+			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+			// 编译附加光源版本
+			#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+			// 编译附加光源投影版本
+			#pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+			// 编译软阴影版本
+			#pragma multi_compile_fragment _ _SHADOWS_SOFT
+			// 编译光照层版本
+			#pragma multi_compile_fragment _ _LIGHT_LAYERS
+            
+            #pragma vertex vert
+            #pragma fragment frag
+            
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Common/ShaderUtils.hlsl"
+            
+            half4 _Diffuse;
+            half4 _Specular;
+            float _Gloss;
+            
+            struct a2v
+            {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+            };
+            
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 worldNormal : TEXCOORD0;
+                float3 worldPos : TEXCOORD1;
+				float4 shadowCoords : TEXCOORD2;
 				
-				fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+				// 顶点附加光源颜色和高光只在附加光源模式为逐顶点时使用
+                #ifdef _ADDITIONAL_LIGHTS_VERTEX
+				half3 vertexAdditionalLighting : TESSFACTOR3;
+				half3 vertexAdditionalSpecular : TESSFACTOR4;
+                #endif
+            };
+            
+            v2f vert(a2v v)
+            {
+                v2f o;
 
-			 	fixed3 diffuse = _LightColor0.rgb * _Diffuse.rgb * max(0, dot(worldNormal, worldLightDir));
+                // 获取位置信息，包含了各种空间中的位置
+                VertexPositionInputs positions = GetVertexPositionInputs(v.vertex.xyz);
 
-			 	fixed3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
-			 	fixed3 halfDir = normalize(worldLightDir + viewDir);
-			 	fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+				// 齐次空间坐标，在位置信息里包含了，就是裁剪空间坐标
+				o.pos = positions.positionCS;
 
-				fixed atten = 1.0;
+				// 世界空间坐标，位置信息里也有
+				o.worldPos = positions.positionWS;
+
+                // 这个顶点在阴影贴图上的坐标
+				// URP 的阴影是先根据场景计算出一张阴影贴图，然后着色器再根据顶点或片元在阴影贴图上的位置来控制要不要显示阴影
+                o.shadowCoords = GetShadowCoord(positions);
+                
+                o.worldNormal = TransformObjectToWorldNormal(v.normal);
+                
+                // 如果附加光源为逐顶点模式则在这里获取逐顶点的附加光源并传递给片元着色器
+                #ifdef _ADDITIONAL_LIGHTS_VERTEX
+                    o.vertexAdditionalLighting = VertexLighting(o.worldPos, o.worldNormal);
+                    o.vertexAdditionalSpecular = GetAdditionalSpecularColor(o.worldPos, o.worldNormal, _Specular, _Gloss);
+                #endif
+                
+                return o;
+            }
+            
+            half4 frag(v2f i) : SV_Target
+            {
+				// 主光源部分，URP 的主光源只有逐像素和关两个设置，这个 Shader 不考虑主光源关闭的情况
+				// URP 将平行光视为主光源，因此主光源不考虑衰减问题
+				Light mainLight = GetMainLight();
+				half3 lambert = LightingLambert(mainLight.color, mainLight.direction, i.worldNormal);
+
+				// 主光源高光
+				half3 specular = LightingSpecular(mainLight.color, mainLight.direction, i.worldNormal, GetWorldSpaceViewDir(i.worldPos), _Specular, _Gloss);
 				
-				fixed shadow = SHADOW_ATTENUATION(i);
+                // 主光源产生的影子的浓度
+                half shadowAmount = MainLightRealtimeShadow(i.shadowCoords);
+
+				// 计算主光源的颜色总和
+				// 阴影浓度是 0-1，其中 0 表示阴影 1 表示不在阴影里，用乘法就行
+				half3 mainLighting = (lambert + specular) * shadowAmount;
+
+
+				// TODO: 附加光部分没有考虑到阴影
+				// 附加光源部分，附加光源有三种模式，要根据模式处理
+                #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+					// 附加光源是逐顶点模式，取出顶点着色器计算的附加光
+                    half3 additionalLighting = i.vertexAdditionalLighting;
+                #elif defined(_ADDITIONAL_LIGHTS)
+					// 附加光源是逐像素模式，计算附加光
+                    half3 additionalLighting = GetAdditionalLighting(i.worldPos, i.worldNormal);
+				#else
+					// 附加光源被禁用了，附加光是纯黑
+					half3 additionalLighting = half3(0, 0, 0);
+                #endif
+
+				// 附加光源的高光，附加光源有三种模式，要根据模式处理
+                #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+					// 附加光源是逐顶点模式，取出顶点着色器计算的附加光源高光
+                    half3 additionaSpecular = i.vertexAdditionalSpecular;
+                #elif defined(_ADDITIONAL_LIGHTS)
+					// 附加光源是逐像素模式，附加光源高光
+                    half3 additionaSpecular = GetAdditionalSpecularColor(i.worldPos, i.worldNormal, _Specular, _Gloss);
+				#else
+					// 附加光源被禁用了，附加光源高光是纯黑
+					half3 additionaSpecular = half3(0, 0, 0);
+                #endif
 				
-				return fixed4(ambient + (diffuse + specular) * atten * shadow, 1.0);
-			}
-			
-			ENDCG
-		}
+				// 环境光
+				half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+                
+                return half4((mainLighting + additionalLighting + additionaSpecular + ambient) * _Diffuse.rgb, 1.0);
+            }
+            
+            ENDHLSL
+        }
+    }
 	
-		Pass {
-			// Pass for other pixel lights
-			Tags { "LightMode"="ForwardAdd" }
-			
-			Blend One One
-		
-			CGPROGRAM
-			
-			// Apparently need to add this declaration
-			#pragma multi_compile_fwdadd
-			// Use the line below to add shadows for point and spot lights
-//			#pragma multi_compile_fwdadd_fullshadows
-			
-			#pragma vertex vert
-			#pragma fragment frag
-			
-			#include "Lighting.cginc"
-			#include "AutoLight.cginc"
-			
-			fixed4 _Diffuse;
-			fixed4 _Specular;
-			float _Gloss;
-			
-			struct a2v {
-				float4 vertex : POSITION;
-				float3 normal : NORMAL;
-			};
-			
-			struct v2f {
-				float4 position : SV_POSITION;
-				float3 worldNormal : TEXCOORD0;
-				float3 worldPos : TEXCOORD1;
-			};
-			
-			v2f vert(a2v v) {
-			 	v2f o;
-			 	o.position = UnityObjectToClipPos(v.vertex);
-			 	
-			 	o.worldNormal = UnityObjectToWorldNormal(v.normal);
-			 	
-			 	o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-			 	
-			 	return o;
-			}
-			
-			fixed4 frag(v2f i) : SV_Target {
-				fixed3 worldNormal = normalize(i.worldNormal);
-				#ifdef USING_DIRECTIONAL_LIGHT
-					fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
-				#else
-					fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
-				#endif
-
-			 	fixed3 diffuse = _LightColor0.rgb * _Diffuse.rgb * max(0, dot(worldNormal, worldLightDir));
-
-			 	fixed3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
-			 	fixed3 halfDir = normalize(worldLightDir + viewDir);
-			 	fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
-
-				#ifdef USING_DIRECTIONAL_LIGHT
-					fixed atten = 1.0;
-				#else
-					float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos, 1)).xyz;
-					fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
-				#endif
-			 	
-				return fixed4((diffuse + specular) * atten, 1.0);
-			}
-			
-			ENDCG
-		}
-	}
-	FallBack "Specular"
+    // 最终失败转发，转给 URP 的基础光照材质
+	FallBack "Universal Render Pipeline/Lit"
 }
