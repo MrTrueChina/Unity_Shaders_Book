@@ -43,6 +43,9 @@ public class GrabScreenFeature : ScriptableRendererFeature
     /// </summary>
     class GrabPass : ScriptableRenderPass
     {
+        /// <summary>
+        /// 抓取到的图片的暂存容器
+        /// </summary>
         RenderTargetHandle tempColorTarget;
         /// <summary>
         /// 设置
@@ -59,32 +62,47 @@ public class GrabScreenFeature : ScriptableRendererFeature
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             var descriptor = cameraTextureDescriptor;
+            // 抗锯齿设为 1
             descriptor.msaaSamples = 1;
+            // 深度缓冲区位数设为 0，会让深度缓冲失效
             descriptor.depthBufferBits = 0;
 
+            // 获取临时的渲染纹理，即将当前时刻的渲染存入到暂存的这个容器里
             cmd.GetTemporaryRT(tempColorTarget.id, descriptor);
+            // 设置全局纹理，将容器里的这个纹理设置到管线的全局变量里，这样 Shader 里就可以通过名字获取到这张纹理
             cmd.SetGlobalTexture(settings.TextureName, tempColorTarget.Identifier());
 
+            // 设置这个自定义通道的渲染目标为这个纹理的容器
             ConfigureTarget(tempColorTarget.Identifier());
+            // 似乎是在配置这个自定义通道的清理方案？
             ConfigureClear(ClearFlag.Color, Color.black);
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            // 获取当前的命令缓冲区，然后执行它，然后清除了命令缓冲区
+            // 相当于让这一步的命令正常执行
             CommandBuffer cmd = CommandBufferPool.Get();
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
             if ((int)settings.RenderPassEvent >= (int)RenderPassEvent.BeforeRenderingPostProcessing)
             {
+                // 执行时间设置为在后处理之前或者更晚
+
+                // 使用设置的材质的索引为 2 的通道进行渲染并将结果存入容器？
                 cmd.Blit(null, tempColorTarget.Identifier(), settings.BlitMaterial, 2);
             }
             else
             {
+                // 执行时间设置为 在后处理之前 这个事件再往前
+
+
                 var cameraTarget = renderingData.cameraData.renderer.cameraColorTarget;
                 Blit(cmd, cameraTarget, tempColorTarget.Identifier());
             }
 
+            // 执行缓冲区命令，然后释放，让流程继续
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
@@ -95,6 +113,9 @@ public class GrabScreenFeature : ScriptableRendererFeature
         }
     }
 
+    /// <summary>
+    /// 渲染通道
+    /// </summary>
     class RenderPass : ScriptableRenderPass
     {
         Settings settings;
@@ -230,11 +251,28 @@ public class GrabScreenFeature : ScriptableRendererFeature
         }
     }
 
+    /// <summary>
+    /// 抓取通道
+    /// </summary>
     GrabPass grabPass;
+    /// <summary>
+    /// 渲染通道
+    /// </summary>
     RenderPass renderPass;
+    /// <summary>
+    /// 纹理转存通道
+    /// </summary>
     BlitPass blitPass;
+    /// <summary>
+    /// 复制深度的通道
+    /// </summary>
     CopyDepthPass copyDepthPass;
-    [SerializeField] Settings settings = new Settings();
+    
+    /// <summary>
+    /// 设置
+    /// </summary>
+    [SerializeField]
+    Settings settings = new Settings();
 
     public override void Create()
     {
