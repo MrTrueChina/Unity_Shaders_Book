@@ -24,7 +24,7 @@ Shader "Unity Shaders Book/Chapter 10/Reflection"
 			// 几何体队列
 			"Queue" = "Geometry"
 		}
-        
+
         Pass
         {
             Tags
@@ -32,6 +32,7 @@ Shader "Unity Shaders Book/Chapter 10/Reflection"
                 // 光照模式为 URP前向渲染
                 "LightMode" = "UniversalForward"
 			}
+            
             
             HLSLPROGRAM
 			

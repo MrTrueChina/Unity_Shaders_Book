@@ -121,7 +121,7 @@ half3 GetSpecualrColorBlinnPhong(half3 lightDirection, half3 normal, half3 viewD
 /// @param objectSpaceNormal 物体空间法线
 /// @param objectSpaceTangent 物体空间切线
 /// @return 世界空间到切线空间的转换矩阵
-float3x3 CreateWorldToTangentByObject(half3 objectSpaceNormal, half4 objectSpaceTangent)
+float3x3 CreateTangentToWorldByObject(half3 objectSpaceNormal, half4 objectSpaceTangent)
 {
     // 具体的算法需要一些几何功底才能理解，你要是功底不够就别管细节直接用，不影响
     return CreateTangentToWorld(TransformObjectToWorldNormal(objectSpaceNormal), TransformObjectToWorldDir(objectSpaceTangent.xyz), objectSpaceTangent.w);

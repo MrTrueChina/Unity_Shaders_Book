@@ -71,13 +71,13 @@ Shader "Unity Shaders Book/Chapter 7/Mask Texture"
                 // o.uv.xy = v.texcoord.xy * _MainTex_ST.xy + _MainTex_ST.zw;
                 o.uv.xy = TRANSFORM_TEX(v.texcoord, _MainTex);
                 
-                float3x3 worldToTangent = CreateWorldToTangentByObject(v.normal, v.tangent);
+                float3x3 tangentToWorld = CreateTangentToWorldByObject(v.normal, v.tangent);
 
                 // 获取主光源
                 Light mainLight = GetMainLight();
 
-                o.lightDir = TransformWorldToTangentDir(mainLight.direction, worldToTangent);
-                o.viewDir = TransformWorldToTangentDir(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(v.vertex)), worldToTangent);
+                o.lightDir = TransformWorldToTangentDir(mainLight.direction, tangentToWorld);
+                o.viewDir = TransformWorldToTangentDir(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(v.vertex)), tangentToWorld);
                 
                 return o;
             }

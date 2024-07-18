@@ -99,15 +99,15 @@ Shader "Unity Shaders Book/Chapter 7/My-MaskTexture"
                 outputData.uv.xy = TRANSFORM_TEX(vertexData.texcoord, _MainTexture);
                 
                 // 创建一个从世界空间到切线空间的转换矩阵
-                float3x3 worldToTangent = CreateWorldToTangentByObject(vertexData.normal, vertexData.tangent);
+                float3x3 tangentToWorld = CreateTangentToWorldByObject(vertexData.normal, vertexData.tangent);
 
                 // 获取主光源
                 Light mainLight = GetMainLight();
 
                 // 转换光线到切线空间并保存
-                outputData.tangentLightDirection = TransformWorldToTangentDir(mainLight.direction, worldToTangent);
+                outputData.tangentLightDirection = TransformWorldToTangentDir(mainLight.direction, tangentToWorld);
                 // 转换视线到切线空间并保存
-                outputData.tangentViewDirection = TransformWorldToTangentDir(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(vertexData.position.xyz)), worldToTangent);
+                outputData.tangentViewDirection = TransformWorldToTangentDir(GetWorldSpaceNormalizeViewDir(TransformObjectToWorld(vertexData.position.xyz)), tangentToWorld);
 
                 return outputData;
             }
