@@ -76,6 +76,8 @@ public class RedTintRenderPass : ScriptableRenderPass
         // 在 Shader 里这个 1 号通道是直接输出颜色
         Blit(cmd, textureHandle, cameraTargetHandle, material, 1);
 
+        // 上面的逻辑里一定得有一张中转图片，按照 Unity 官方文档的说法 Blit 的源和输出使用同一张图片是未定义行为，这种操作可能导致错误
+
         // 执行命令，然后释放掉
         context.ExecuteCommandBuffer(cmd);
         CommandBufferPool.Release(cmd);

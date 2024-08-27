@@ -17,9 +17,9 @@ Shader "Unity Shaders Book/Chapter 11/Water"
         {
             // 使用通用渲染管线（URP）
             "RenderPipeline" = "UniversalPipeline"
-			// 不透明类型，折射虽然是一种透明效果但是它的原理是获得原始纹理处理后渲染，物体本身实际上是完全不透明的
+			// 透明类型
 			"RenderType" = "Transparent"
-			// 透明队列，折射物体虽然实际上完全不透明，但是他的效果是透明的，需要在不透明物体渲染完毕后再渲染才能正常显示
+			// 透明队列
 			"Queue" = "Transparent"
 			// 不接受投影
 			"IgnoreProjector" = "True"
