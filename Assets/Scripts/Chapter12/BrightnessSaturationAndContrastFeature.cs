@@ -14,13 +14,11 @@ public class BrightnessSaturationAndContrastFeature : ScriptableRendererFeature
 	/// </summary>
 	[Range(0.0f, 3.0f)]
 	public float brightness = 1.0f;
-
 	/// <summary>
 	/// 饱和度
 	/// </summary>
 	[Range(0.0f, 3.0f)]
 	public float saturation = 1.0f;
-
 	/// <summary>
 	/// 对比度
 	/// </summary>
@@ -34,7 +32,7 @@ public class BrightnessSaturationAndContrastFeature : ScriptableRendererFeature
 
     public override void Create()
     {
-        pass = new BrightnessSaturationAndContrastPass();
+        pass = new BrightnessSaturationAndContrastPass(brightness, saturation, contrast);
         
         // 设定注入点，这里选择了在后期处理之后生效
         // 实际上这个功能自己就是后处理，所以在前面在后面取决于想不想让别的后处理影响到这个后处理
@@ -71,12 +69,10 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
 	/// 亮度
 	/// </summary>
 	public float brightness = 1.0f;
-
 	/// <summary>
 	/// 饱和度
 	/// </summary>
 	public float saturation = 1.0f;
-
 	/// <summary>
 	/// 对比度
 	/// </summary>
@@ -98,10 +94,19 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
 	/// <summary>
 	/// 构造方法，并不是什么特别的方法
 	/// </summary>
-	public BrightnessSaturationAndContrastPass()
+	public BrightnessSaturationAndContrastPass(float brightness, float saturation, float contrast)
 	{
+        // 只是一个 log，确认了一下对于 URP 每次修改功能里的设置都会导致重新构造一次 Pass，所以传参用传值还是传对象都不影响生效
+        // 这个构造不是传对象就能避免的，甚至就算你修改的参数实际上是个不会传进 Pass 的参数都会导致构造
+        // Debug.Log("亮度等自定义渲染功能的通道构造了");
+
 		// 这个通道也就只负责使用这个 Shader，可以直接固定用名字获取 Shader 创建材质
 		material = CoreUtils.CreateEngineMaterial("Unity Shaders Book/Chapter 12/My Brightness Saturation And Contrast");
+
+        // 保存参数
+        this.brightness = brightness;
+        this.contrast = contrast;
+        this.saturation = saturation;
 
         // 创建一个渲染图片输出器
         // 宽高是屏幕宽高，就是全屏输出
@@ -135,6 +140,11 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
 
         // 取出摄像机的渲染图片
         RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
+
+        // 给材质设置各项属性值
+        material.SetFloat("_Brightness", brightness);
+        material.SetFloat("_Saturation", saturation);
+        material.SetFloat("_Contrast", contrast);
 
         // 将摄像机的图片，使用指定材质的 0 号通道，渲染到中转图片
         // 在 Shader 里这个 0 号通道是调色后输出颜色
