@@ -6,6 +6,8 @@ using System;
 
 /// <summary>
 /// 控制亮度、饱和度、对比度的后处理效果
+/// 这个自定义效果替换了《入门精要》里的后处理部分的挂载到摄像机上的组件
+/// 需要按照 URP 的方式在渲染器数据的资源文件里添加这个功能
 /// </summary>
 public class BrightnessSaturationAndContrastFeature : ScriptableRendererFeature
 {
@@ -141,17 +143,18 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
         // 取出摄像机的渲染图片
         RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
 
-        // 给材质设置各项属性值
+        // 给材质设置各项属性值，就是普通的给材质球设置属性值的方式
         material.SetFloat("_Brightness", brightness);
         material.SetFloat("_Saturation", saturation);
         material.SetFloat("_Contrast", contrast);
 
         // 将摄像机的图片，使用指定材质的 0 号通道，渲染到中转图片
-        // 在 Shader 里这个 0 号通道是调色后输出颜色
+        // 在 Shader 里这个 0 号通道是后处理通道，输出处理后的纹理
         // Blit 是一个计算机图形学的词，他指的是从一个图片快速渲染到另一个图片的操作
         Blit(cmd, cameraTargetHandle, textureHandle, material, 0);
         // 将中转图片，使用指定材质的 1 号通道，渲染到摄像机的图片
         // 在 Shader 里这个 1 号通道是直接输出颜色
+        // 这一步操作对画面没有任何修改，保留这一步操作的原因是 Blit 的源和目标使用相同纹理是一个未定义操作，会导致不确定的错误，为了防止这个情况就需要分两步来添加一个中转纹理
         Blit(cmd, textureHandle, cameraTargetHandle, material, 1);
 
         // 执行命令，然后释放掉
