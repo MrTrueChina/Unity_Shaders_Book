@@ -31,35 +31,33 @@ using System;
 /// 这个自定义效果替换了《入门精要》里的后处理部分的挂载到摄像机上的组件
 /// 需要按照 URP 的方式在渲染器数据的资源文件里添加这个功能
 /// </summary>
-public class BrightnessSaturationAndContrastFeature : ScriptableRendererFeature
+public class EdgeDetectionFeature : ScriptableRendererFeature
 {
 	/// <summary>
-	/// 亮度
+	/// 仅显示边缘的程度
 	/// </summary>
-    [Header("亮度")] 
-	[Range(0.0f, 3.0f)]
-	public float brightness = 1.0f;
+    [Header("仅显示边缘")] 
+	[Range(0.0f, 1.0f)]
+	public float edgeOnly = 1.0f;
 	/// <summary>
-	/// 饱和度
+	/// 边缘颜色
 	/// </summary>
-    [Header("饱和度")]
-	[Range(0.0f, 3.0f)]
-	public float saturation = 1.0f;
+    [Header("边缘颜色")]
+	public Color edgeColor = Color.black;
 	/// <summary>
-	/// 对比度
+	/// 背景色
 	/// </summary>
-    [Header("对比度")]
-	[Range(0.0f, 3.0f)]
-	public float contrast = 1.0f;
+    [Header("背景色")]
+	public Color backgroundColor = Color.white;
 
     /// <summary>
     /// 这个渲染效果所使用的渲染通道
     /// </summary>
-    private BrightnessSaturationAndContrastPass pass;
+    private EdgeDetectionPass pass;
 
     public override void Create()
     {
-        pass = new BrightnessSaturationAndContrastPass(brightness, saturation, contrast);
+        pass = new EdgeDetectionPass(edgeOnly, edgeColor, backgroundColor);
         
         // 设定注入点，这里选择了在后期处理之后生效
         // 实际上这个功能自己就是后处理，所以在前面在后面取决于想不想让别的后处理影响到这个后处理
@@ -90,20 +88,20 @@ public class BrightnessSaturationAndContrastFeature : ScriptableRendererFeature
 /// <summary>
 /// 控制亮度、饱和度、对比度的后处理效果使用的自定义通道
 /// </summary>
-public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDisposable
+public class EdgeDetectionPass : ScriptableRenderPass, IDisposable
 {
 	/// <summary>
-	/// 亮度
+	/// 只显示边缘
 	/// </summary>
-	public float brightness = 1.0f;
+	public float edgeOnly = 1.0f;
 	/// <summary>
-	/// 饱和度
+	/// 边缘色
 	/// </summary>
-	public float saturation = 1.0f;
+	public Color edgeColor = Color.black;
 	/// <summary>
-	/// 对比度
+	/// 背景色
 	/// </summary>
-	public float contrast = 1.0f;
+	public Color backgroundColor = Color.white;
 
 	/// <summary>
 	/// 材质，后处理本质是一次渲染，要进行渲染就需要有材质
@@ -121,19 +119,19 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
 	/// <summary>
 	/// 构造方法，并不是什么特别的方法
 	/// </summary>
-	public BrightnessSaturationAndContrastPass(float brightness, float saturation, float contrast)
+	public EdgeDetectionPass(float brightness, Color saturation, Color contrast)
 	{
         // 只是一个 log，确认了一下对于 URP 每次修改功能里的设置都会导致重新构造一次 Pass，所以传参用传值还是传对象都不影响生效
         // 这个构造不是传对象就能避免的，甚至就算你修改的参数实际上是个不会传进 Pass 的参数都会导致构造
         // Debug.Log("亮度等自定义渲染功能的通道构造了");
 
 		// 这个通道也就只负责使用这个 Shader，可以直接固定用名字获取 Shader 创建材质
-		material = CoreUtils.CreateEngineMaterial("Unity Shaders Book/Chapter 12/My Brightness Saturation And Contrast");
+		material = CoreUtils.CreateEngineMaterial("Unity Shaders Book/Chapter 12/My Edge Detection");
 
         // 保存参数
-        this.brightness = brightness;
-        this.contrast = contrast;
-        this.saturation = saturation;
+        this.edgeOnly = brightness;
+        this.backgroundColor = contrast;
+        this.edgeColor = saturation;
 
         // 创建一个渲染图片输出器
         // 宽高是屏幕宽高，就是全屏输出
@@ -169,9 +167,9 @@ public class BrightnessSaturationAndContrastPass : ScriptableRenderPass, IDispos
         RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
 
         // 给材质设置各项属性值，就是普通的给材质球设置属性值的方式
-        material.SetFloat("_Brightness", brightness);
-        material.SetFloat("_Saturation", saturation);
-        material.SetFloat("_Contrast", contrast);
+        material.SetFloat("_EdgeOnly", edgeOnly);
+        material.SetColor("_EdgeColor", edgeColor);
+        material.SetColor("_BackgroundColor", backgroundColor);
 
         // 将摄像机的图片，使用指定材质的 0 号通道，渲染到中转图片
         // 在 Shader 里这个 0 号通道是后处理通道，输出处理后的纹理

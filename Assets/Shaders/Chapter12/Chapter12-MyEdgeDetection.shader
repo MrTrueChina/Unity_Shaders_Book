@@ -1,12 +1,12 @@
 ﻿// 控制亮度、饱和度和对比度的 Shader
 // 外壳和《入门精要》基本没关系了，但是核心的算法是一样的
-Shader "Unity Shaders Book/Chapter 12/My Brightness Saturation And Contrast"
+Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
 {
     Properties
     {
-        _Brightness ("Brightness", Float) = 1
-        _Saturation ("Saturation", Float) = 1
-        _Contrast ("Contrast", Float) = 1
+		_EdgeOnly ("Edge Only", Float) = 1.0
+		_EdgeColor ("Edge Color", Color) = (0, 0, 0, 1)
+		_BackgroundColor ("Background Color", Color) = (1, 1, 1, 1)
     }
     
     SubShader
@@ -28,18 +28,18 @@ Shader "Unity Shaders Book/Chapter 12/My Brightness Saturation And Contrast"
         // 调整亮度、饱和度和对比度的通道
         Pass
         {
-            Name "BSC"
+            Name "Edge"
 
             HLSLPROGRAM
             
             #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
-            #pragma fragment BSC
+            #pragma fragment Edge
 
-            float _Brightness;
-            float _Saturation;
-            float _Contrast;
+			half _EdgeOnly;
+			half4 _EdgeColor;
+			half4 _BackgroundColor;
             
-            float4 BSC (Varyings input) : SV_Target
+            float4 Edge (Varyings input) : SV_Target
             {
                 // 获取颜色，这一整行都是 URP 的 Blit 包提供的，直接用就行
                 // 这里只获取了 rgb，这是因为这个后处理是全屏最后的后处理，不会有透明度的问题
