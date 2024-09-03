@@ -49,7 +49,7 @@ Shader "Unity Shaders Book/Chapter 12/My Brightness Saturation And Contrast"
                 float3 finalColor = color * _Brightness;
 
                 // 饱和度
-                // 灰度色，这是饱和度为 0 时候的颜色
+                // 亮度，这是饱和度为 0 时候的颜色
                 // 这个公式对应 ITU-R Recommendation BT.709. 标准，是根据人眼对颜色的感知能力制定的
 				half luminance = 0.2125 * color.r + 0.7154 * color.g + 0.0721 * color.b;
 				half3 luminanceColor = half3(luminance, luminance, luminance);
