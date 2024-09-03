@@ -44,19 +44,30 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
 				return  0.2125 * color.r + 0.7154 * color.g + 0.0721 * color.b; 
 			}
 
-			half Sobel(v2f i) {
+			half Sobel(Varyings input) {
 				const half Gx[9] = {-1,  0,  1,
-										-2,  0,  2,
-										-1,  0,  1};
+                                    -2,  0,  2,
+                                    -1,  0,  1};
 				const half Gy[9] = {-1, -2, -1,
-										0,  0,  0,
-										1,  2,  1};		
+                                    0,  0,  0,
+                                    1,  2,  1};
+                float2 Gu[9] = {
+                    input.texcoord + float2(-1, -1) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(0, -1) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(1, -1) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(-1, 0) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(0, 0) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(1, 0) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(-1, 1) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(0, 1) * (1 / _ScreenParams.xy),
+                    input.texcoord + float2(1, 1) * (1 / _ScreenParams.xy)
+                };
 				
 				half texColor;
 				half edgeX = 0;
 				half edgeY = 0;
 				for (int it = 0; it < 9; it++) {
-					texColor = luminance(tex2D(_MainTex, i.uv[it]));
+                    texColor = luminance(SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, Gu[it]));
 					edgeX += texColor * Gx[it];
 					edgeY += texColor * Gy[it];
 				}
@@ -68,12 +79,10 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
             
             float4 Edge (Varyings input) : SV_Target
             {
-                float3 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord).rgb;
-                return color;
-
-				half edge = Sobel(i);
+				half edge = Sobel(input);
 				
-				half4 withEdgeColor = lerp(_EdgeColor, tex2D(_MainTex, i.uv[4]), edge);
+                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+				half4 withEdgeColor = lerp(_EdgeColor, color, edge);
 				half4 onlyEdgeColor = lerp(_EdgeColor, _BackgroundColor, edge);
 				return lerp(withEdgeColor, onlyEdgeColor, _EdgeOnly);
             }
