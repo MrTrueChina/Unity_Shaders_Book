@@ -1,6 +1,10 @@
 ﻿// 边缘检测的 Shader
 // 外壳和《入门精要》基本没关系了，但是核心的算法是一样的
-Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
+//
+// 这是以顶点着色器算 UV 的，和《入门精要》的更接近一些
+// 理论上把 UV 坐标的计算量挪到了顶点着色器里算力应该更加节约一点，相对的显存和内存占用应该会高一点
+// 实际测试性能差异极小，多占了一些内存和显存，似乎不太值得
+Shader "Unity Shaders Book/Chapter 12/My Edge Detection With Vertex"
 {
     Properties
     {
@@ -33,7 +37,7 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
 
             HLSLPROGRAM
             
-            #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
+            #pragma vertex vert
             #pragma fragment Edge
 
             // 边缘粗细
@@ -45,6 +49,35 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
             // 只显示边缘时的背景颜色
             half4 _BackgroundColor;
 
+            // 顶点着色器给片元着色器传递的数据
+            // 是对 URP 的 Blit 包的 Varyings 的包装，多传递一套 UV 坐标以降低计算量
+            struct v2f
+            {
+                Varyings varyings;
+                float2 uvs[9] : TEXCOORD1;
+            };
+
+            v2f vert(Attributes input)
+            {
+                v2f output;
+
+                // 用 Blit 的 Vert 方法处理，这是 URP 提供的顶点着色器方法
+                output.varyings = Vert(input);
+
+                // 计算八个方向的像素的 UV 坐标，再加上中间自己的像素的坐标，总共九个
+                output.uvs[0] = output.varyings.texcoord + float2(-0.001, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[1] = output.varyings.texcoord + float2(0, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[2] = output.varyings.texcoord + float2(0.001, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[3] = output.varyings.texcoord + float2(-0.001, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[4] = output.varyings.texcoord + float2(0, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[5] = output.varyings.texcoord + float2(0.001, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[6] = output.varyings.texcoord + float2(-0.001, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[7] = output.varyings.texcoord + float2(0, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+                output.uvs[8] = output.varyings.texcoord + float2(0.001, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)));
+
+                return output;
+            }
+
             // 计算亮度
             half luminance(half4 color)
             {
@@ -53,7 +86,7 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
             }
 
             // 计算边缘程度
-            half GetEdgeValue(Varyings input)
+            half GetEdgeValue(v2f input)
             {
                 // Sobel 算子，边缘检测的算子之一
                 // 边缘检测的原理是计算卷积，可以看到这个卷积核的左右两侧是相反的，如果左右两侧的值相同则卷积就是0，左右两侧值相差越大则卷积的绝对值越大
@@ -69,21 +102,6 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
                     0, 0, 0,
                     1, 2, 1
                 };
-                // 到八个方向的附近像素的 UV 坐标，也包括了这个片元自己的 UV 坐标，总共九个
-                const float2 Gu[9] = {
-                    // UV 偏转量是 (边缘粗细 / 屏幕宽高 * (宽高里小的那个))
-                    // 因为 UV 的范围是 0-1，偏转的量是 0.001，这样在调整粗细的时候数值会好看一些
-                    // 用宽高小的那个是考虑到带鱼屏，如果用长边或者宽高各自用各自的在带鱼屏上可能会很怪
-                    input.texcoord + float2(-0.001, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0.001, -0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(-0.001, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0.001, 0) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(-0.001, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y))),
-                    input.texcoord + float2(0.001, 0.001) * (_EdgeThickness / _ScreenParams.xy * (min(_ScreenParams.x, _ScreenParams.y)))
-                };
                 
                 // 下面是正式计算边缘
                 half texColor;
@@ -92,7 +110,7 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
                 for (int it = 0; it < 9; it++)
                 {
                     // 计算亮度，然后乘，循环9次就是卷积了
-                    texColor = luminance(SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, Gu[it]));
+                    texColor = luminance(SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.uvs[it]));
                     edgeX += texColor * Gx[it];
                     edgeY += texColor * Gy[it];
                 }
@@ -102,10 +120,10 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
                 return edge;
             }
             
-            float4 Edge(Varyings input) : SV_Target
+            float4 Edge(v2f input) : SV_Target
             {
                 // 取出输入的颜色
-                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.varyings.texcoord);
 
                 // 计算边缘
                 half edge = GetEdgeValue(input);

@@ -1,17 +1,11 @@
-﻿// 边缘检测的 Shader
-// 外壳和《入门精要》基本没关系了，但是核心的算法是一样的
-Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+Shader "Unity Shaders Book/Chapter 12/My Gaussian Blur"
 {
     Properties
     {
-        // 边缘粗细
-        _EdgeThickness ("Edge Thickness", Float) = 1.0
-        // 只显示边缘
-        _EdgeOnly ("Edge Only", Float) = 1.0
-        // 边缘颜色
-        _EdgeColor ("Edge Color", Color) = (0, 0, 0, 1)
-        // 只显示边缘时的背景颜色
-        _BackgroundColor ("Background Color", Color) = (1, 1, 1, 1)
+        // 模糊体积
+        _BlurSize ("Blur Size", Float) = 1.0
     }
     
     SubShader
@@ -26,7 +20,7 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
         LOD 100
         ZTest Always ZWrite Off Cull Off
 
-        // 边缘检测的通道
+        // 调整亮度、饱和度和对比度的通道
         Pass
         {
             Name "Edge"
@@ -36,14 +30,8 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection"
             #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
             #pragma fragment Edge
 
-            // 边缘粗细
-            half _EdgeThickness;
-            // 只显示边缘
-            half _EdgeOnly;
-            // 边缘颜色
-            half4 _EdgeColor;
-            // 只显示边缘时的背景颜色
-            half4 _BackgroundColor;
+            // 模糊体积
+            half _BlurSize;
 
             // 计算亮度
             half luminance(half4 color)
