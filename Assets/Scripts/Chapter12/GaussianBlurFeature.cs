@@ -33,11 +33,19 @@ using System;
 public class GaussianBlurFeatureParams
 {
 	/// <summary>
-	/// 模糊体积
+	/// 卷积核体积
 	/// </summary>
-    [Header("模糊体积")] 
+    [Header("卷积核体积")]
+    [Tooltip("即一个像素会和多大范围内的其他像素进行颜色混合，这个值越大则模糊范围越大，但相应的性能消耗也会更大")]
 	[Range(0.0f, 10.0f)]
-	public float blurSize = 1.0f;
+	public float kernelSize = 1.0f;
+	/// <summary>
+	/// 方差
+	/// </summary>
+    [Header("方差")]
+    [Tooltip("一个像素会多大程度受到偏远的像素的影响，方差越小则受到远处像素影响程度越小，视觉上模糊效果就越小")]
+	[Range(0.0f, 10.0f)]
+	public float standardDeviation = 3.0f;
 }
 
 /// <summary>
@@ -121,7 +129,7 @@ public class GaussianBlurPass : ScriptableRenderPass, IDisposable
         // Debug.Log("亮度等自定义渲染功能的通道构造了");
 
 		// 这个通道也就只负责使用这个 Shader，可以直接固定用名字获取 Shader 创建材质
-		material = CoreUtils.CreateEngineMaterial("Unity Shaders Book/Chapter 12/My Edge Detection");
+		material = CoreUtils.CreateEngineMaterial("Unity Shaders Book/Chapter 12/My Gaussian Blur");
 
         // 保存参数
         this.edgeParams = edgeParams;
@@ -160,7 +168,8 @@ public class GaussianBlurPass : ScriptableRenderPass, IDisposable
         RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
 
         // 给材质设置各项属性值，就是普通的给材质球设置属性值的方式
-        material.SetFloat("_BlurSize", edgeParams.blurSize);
+        material.SetFloat("_KernelSize", edgeParams.kernelSize);
+        material.SetFloat("_StandardDeviation", edgeParams.standardDeviation);
 
         // 将摄像机的图片，使用指定材质的 0 号通道，渲染到中转图片
         // 在 Shader 里这个 0 号通道是后处理通道，输出处理后的纹理
