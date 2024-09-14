@@ -22,6 +22,11 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
         LOD 100
         ZTest Always ZWrite Off Cull Off
 
+		Pass
+		{
+			
+		}
+
         // 水平模糊的通道
         // 高斯模糊是二维的模糊，假设模糊范围是 5 像素，则一个像素需要 5*5=25 个像素的计算量
         // 但很幸运高斯模糊是圆形均匀扩散的，这就表示可以先整体水平一次再整体垂直一次，这样一个像素就只需要 5+5=10 个像素的计算量
