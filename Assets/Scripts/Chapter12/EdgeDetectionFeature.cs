@@ -185,10 +185,10 @@ public class EdgeDetectionPass : ScriptableRenderPass, IDisposable
         // 在 Shader 里这个 0 号通道是后处理通道，输出处理后的纹理
         // Blit 是一个计算机图形学的词，他指的是从一个图片快速渲染到另一个图片的操作
         Blit(cmd, cameraTargetHandle, textureHandle, material, 0);
-        // 将中转图片，使用指定材质的 1 号通道，渲染到摄像机的图片
-        // 在 Shader 里这个 1 号通道是直接输出颜色
-        // 这一步操作对画面没有任何修改，保留这一步操作的原因是 Blit 的源和目标使用相同纹理是一个未定义操作，会导致不确定的错误，为了防止这个情况就需要分两步来添加一个中转纹理
-        Blit(cmd, textureHandle, cameraTargetHandle, material, 1);
+        
+        // 将中转图片，渲染到摄像机的图片
+        // 经过测试如果不传入材质和通道就是不做处理直接渲染，这样可以少写一个没用的通道
+        Blit(cmd, textureHandle, cameraTargetHandle);
 
         // 执行命令，然后释放掉
         context.ExecuteCommandBuffer(cmd);

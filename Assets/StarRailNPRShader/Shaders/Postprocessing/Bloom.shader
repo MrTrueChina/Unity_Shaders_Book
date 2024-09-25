@@ -104,6 +104,7 @@ Shader "Hidden/Honkai Star Rail/Post Processing/Bloom"
             return EncodeHDR(color);
         }
 
+        // 降采样的顶点着色器
         void VertMipDown(
             Attributes input,
             out Varyings output,
@@ -120,6 +121,7 @@ Shader "Hidden/Honkai Star Rail/Post Processing/Bloom"
             uv2 = texelSize.xyxy * offset2 + output.texcoord.xyxy;
         }
 
+        // 降采样的片元着色器
         half4 FragMipDown(
             Varyings input,
             float4 uv1 : TEXCOORD3,
@@ -199,6 +201,17 @@ Shader "Hidden/Honkai Star Rail/Post Processing/Bloom"
             ENDHLSL
         }
 
+        // 降采样通道，对高亮区域提取后通过这个通道进行像素的压缩
+        // 从原理上说 Bloom 的具体步骤是：提取高亮部分 -> 模糊高亮部分 -> 合并到主输出上
+        //
+        // 已知高斯模糊的算法有两种方式
+        // 1. 精准逐像素采样，优点是在任何分辨率的屏幕上都是完美逐像素，缺点是为了保证不同分辨率效果相同越是大的屏幕所需的计算量就越大
+        // 2. 按百分比步长采样，优点是不管屏幕大小计算量都一样，缺点是步长太大会被看出来重影，如果步长恰好和有规律的画面对齐了会导致奇怪的效果（例如步长是 1%，正好画面是 1% 宽度的垂直相间红蓝线，则这个模糊会毫无作用，因为垂直是纯色模糊无效，水平正好每一个像素都和左右步长的像素一个颜色）
+        //
+        // 为了保证效果，我个人倾向于逐像素采样，能用高分辨率电脑的玩家肯定也会有更好的设备，除非他不懂电脑被人骗了或者自己异想天开
+        // 在逐像素上存在一个方案：对高亮部分进行降采样，例如降低到原来的 1/4 面积，则可以节约 3/4 的模糊计算量，节约的量远大于降采样消耗的量
+        //
+        // 这种方案实际上利用了 Bloom 是模糊后和原图混合的逻辑，本来模糊的图即使降采样更加模糊也不会产生很明显的变化
         Pass
         {
             Name "Bloom Mip Down"

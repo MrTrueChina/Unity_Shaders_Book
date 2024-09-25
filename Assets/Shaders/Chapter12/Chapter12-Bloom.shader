@@ -72,6 +72,7 @@ Shader "Unity Shaders Book/Chapter 12/Bloom" {
 		
 		ZTest Always Cull Off ZWrite Off
 		
+		// 提取高亮部分
 		Pass {  
 			CGPROGRAM  
 			#pragma vertex vertExtractBright  
@@ -80,10 +81,13 @@ Shader "Unity Shaders Book/Chapter 12/Bloom" {
 			ENDCG  
 		}
 		
+		// 直接使用了高斯模糊 Shader 的垂直模糊通道
 		UsePass "Unity Shaders Book/Chapter 12/Gaussian Blur/GAUSSIAN_BLUR_VERTICAL"
 		
+		// 直接使用了高斯模糊 Shader 的水平模糊通道
 		UsePass "Unity Shaders Book/Chapter 12/Gaussian Blur/GAUSSIAN_BLUR_HORIZONTAL"
 		
+		// 叠加模糊后的高亮部分和原始渲染图像的通道
 		Pass {  
 			CGPROGRAM  
 			#pragma vertex vertBloom  

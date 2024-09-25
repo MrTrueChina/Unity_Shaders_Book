@@ -171,3 +171,11 @@ float UnityDitherFloat(float In, float2 ScreenPosition)
     uint index = (uint(uv.x) % 4) * 4 + uint(uv.y) % 4;
     return In - DITHER_THRESHOLDS[index];
 }
+
+/// 计算亮度
+/// @param color 颜色
+/// @return 亮度
+half Luminance(half3 color) {
+    // 这个公式是 ITU-R Recommendation BT.709. 标准，是根据人眼对颜色的感知能力制定的
+    return  0.2125 * color.r + 0.7154 * color.g + 0.0721 * color.b; 
+}

@@ -136,25 +136,5 @@ Shader "Unity Shaders Book/Chapter 12/My Edge Detection With Vertex"
             
             ENDHLSL
         }
-        
-        // 仅用于原样渲染的通道，由于 Unity 的 Blit 不能源和目标相同，处理的时候就需要将源输出到中转纹理中
-        // 但是为了最终渲染结果显示出来需要再输出到 Unity 管线本身的那个输出纹理中，这就需要一个原样渲染的通道
-        Pass
-        {
-            Name "JustBlit" // 名字无所谓，在调用的时候是通过索引调用的
-
-            HLSLPROGRAM
-            
-            #pragma vertex Vert
-            #pragma fragment SimpleBlit
-            
-            float4 SimpleBlit(Varyings input) : SV_Target
-            {
-                float3 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord).rgb;
-                return float4(color.rgb, 1);
-            }
-
-            ENDHLSL
-        }
     }
 }

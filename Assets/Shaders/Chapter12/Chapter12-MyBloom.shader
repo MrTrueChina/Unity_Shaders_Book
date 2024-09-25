@@ -4,10 +4,14 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
 {
     Properties
     {
-        // 卷积核大小，即一个像素会和多大范围内的其他像素进行颜色混合
+        // 亮度阈值，亮度高于这个阈值的像素会产生泛光效果
+		_LuminanceThreshold ("Luminance Threshold", Float) = 0.5
+        // 卷积核大小，泛光区域的一个像素会和多大范围内的其他像素进行颜色混合
         _KernelSize ("Kernel Size", Float) = 1.0
-        // 方差，即一个像素会多大程度受到偏远的像素的影响，方差越小则受到远处像素影响程度越小，视觉上模糊效果就越小
+        // 方差，泛光区域的一个像素会多大程度受到偏远的像素的影响，方差越小则受到远处像素影响程度越小，视觉上模糊效果就越小
         _StandardDeviation ("Standard Deviation", Float) = 3.0
+        // 模糊后的亮部纹理
+		_BrightTex ("Bloom (RGB)", 2D) = "black" {}
     }
     
     SubShader
@@ -16,15 +20,47 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         // Blit 包，提供了一些快速的渲染的功能，对于后期处理相当有用
         #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+        #include "../Common/ShaderUtils.hlsl"
         ENDHLSL
 
         Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "Queue" = "Overlay" }
         LOD 100
         ZTest Always ZWrite Off Cull Off
 
+        // 提取高亮度部分的通道
 		Pass
 		{
-			
+            Name "getLight"
+
+            HLSLPROGRAM
+            
+            #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
+            #pragma fragment Fragment
+
+            // 亮度阈值
+            half _LuminanceThreshold;
+
+            // 计算高斯权重
+            float CalculateGaussianWeight(float x, float standardDeviation)
+            {
+                return exp(-(x * x) / (2.0 * standardDeviation * standardDeviation)) / (sqrt(2.0 * 3.14159) * standardDeviation);
+            }
+            
+            float4 Fragment(Varyings input) : SV_Target
+            {
+                // 取出颜色
+                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+
+                // 计算这个像素的亮度
+                half luminance = Luminance(color);
+
+                // 根据亮度阈值参数筛出这个像素在泛光里的颜色强度，就是亮度减去阈值，限制在 0-1
+			    half val = clamp(luminance - _LuminanceThreshold, 0.0, 1.0);
+
+                return color * val;
+            }
+            
+            ENDHLSL
 		}
 
         // 水平模糊的通道
@@ -37,7 +73,7 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
             HLSLPROGRAM
             
             #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
-            #pragma fragment Edge
+            #pragma fragment Fragment
 
             // 卷积核大小
             half _KernelSize;
@@ -50,7 +86,7 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
                 return exp(-(x * x) / (2.0 * standardDeviation * standardDeviation)) / (sqrt(2.0 * 3.14159) * standardDeviation);
             }
             
-            float4 Edge(Varyings input) : SV_Target
+            float4 Fragment(Varyings input) : SV_Target
             {
                 // 根据模糊体积计算出需要模糊的像素距离
                 // 因为 UV 的范围是 0-1，这里乘了一个 0.001，这样在调整粗细的时候数值会好看一些
@@ -76,6 +112,7 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
             ENDHLSL
         }
         
+        // 垂直模糊的通道
         Pass
         {
             Name "Vertical"
@@ -83,7 +120,7 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
             HLSLPROGRAM
             
             #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
-            #pragma fragment Edge
+            #pragma fragment Fragment
 
             // 卷积核大小
             half _KernelSize;
@@ -96,7 +133,7 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
                 return exp(-(x * x) / (2.0 * standardDeviation * standardDeviation)) / (sqrt(2.0 * 3.14159) * standardDeviation);
             }
             
-            float4 Edge(Varyings input) : SV_Target
+            float4 Fragment(Varyings input) : SV_Target
             {
                 // 根据模糊体积计算出需要模糊的像素距离
                 // 因为 UV 的范围是 0-1，这里乘了一个 0.001，这样在调整粗细的时候数值会好看一些
@@ -121,5 +158,32 @@ Shader "Unity Shaders Book/Chapter 12/My Bloom"
             
             ENDHLSL
         }
+
+        // 合并模糊后的泛光和原始图像的通道
+		Pass
+		{
+            Name "merge"
+
+            HLSLPROGRAM
+            
+            #pragma vertex Vert // 后期处理都是全屏的不需要什么特殊逻辑，顶点着色器就用 Blit 包里提供的
+            #pragma fragment Fragment
+
+            // 高亮区域的纹理
+            sampler2D _BrightTex;
+            
+            float4 Fragment(Varyings input) : SV_Target
+            {
+                // 取出颜色
+                float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+                // 取出泛光颜色
+                float4 lighterColor = tex2D(_BrightTex, input.texcoord);
+
+                // 这个合并没考虑 a，因为这是一个后处理 Shader 取出的基础纹理透明度就是 1，泛光颜色的透明度最小也是 0，所以不用担心透明问题
+                return color + lighterColor;
+            }
+            
+            ENDHLSL
+		}
     }
 }
